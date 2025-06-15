@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - 'BuildsWebGL/**'
+      - 'Builds/WebGL/**'
 
 jobs:
   deploy:
@@ -26,4 +26,4 @@ jobs:
         env:
           BUTLER_API_KEY: ${{ secrets.ITCH_IO_API_KEY }}
         run: |
-          butler push BuildsWebGL SashaGovorova/in-cycle-of-hope:web
+          butler push Builds/WebGL SashaGovorova/in-cycle-of-hope:web

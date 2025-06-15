@@ -1,0 +1,29 @@
+name: Deploy WebGL build to Itch.io
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'BuildsWebGL/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Install Butler
+        run: |
+          curl -L -o butler.zip https://broth.itch.ovh/butler/linux-amd64-head.zip
+          unzip butler.zip -d butler
+          chmod +x butler/butler
+          sudo mv butler/butler /usr/local/bin/
+
+      - name: Push to Itch.io
+        env:
+          BUTLER_API_KEY: ${{ secrets.ITCH_IO_API_KEY }}
+        run: |
+          butler push BuildsWebGL SashaGovorova/in-cycle-of-hope:web
