@@ -24,6 +24,8 @@ public class PlayerMovement : MonoBehaviour
     public float fallSpeedMultiplier = 2f;
 
     [Header("Dash")]
+    private Vector2 dashStartPos;
+    private float dashDistance = 3f;
     public float dashSpeed = 15f;
     public float dashDuration = 0.1f;
     public float dashCooldown = 0.5f;
@@ -63,16 +65,18 @@ public class PlayerMovement : MonoBehaviour
 
         if (isDashing)
         {
-            rb.gravityScale = 0;
-            rb.linearVelocity = dashDirection * dashSpeed;
-            dashTimeLeft -= Time.deltaTime;
+            float dashProgress = 1f - (dashTimeLeft / dashDuration);
+            Vector2 targetPos = dashStartPos + dashDirection * dashDistance;
+            Vector2 newPos = Vector2.Lerp(dashStartPos, targetPos, dashProgress);
+            rb.MovePosition(newPos);
 
+            dashTimeLeft -= Time.deltaTime;
             if (dashTimeLeft <= 0f)
             {
                 isDashing = false;
                 rb.gravityScale = baseGravity;
             }
-            return; // прервати оновлення решти логіки під час дашу
+            return;
         }
 
         if (!isWallJumping)
@@ -210,16 +214,21 @@ public class PlayerMovement : MonoBehaviour
         if (context.performed && canDash && dashCooldownTimer <= 0f)
         {
             Vector2 inputDir = lastDashInput.normalized;
-            if (inputDir == Vector2.zero)
-            {
-                inputDir = isFacingRight ? Vector2.right : Vector2.left;
-            }
 
-            dashDirection = inputDir;
+            if (inputDir == Vector2.zero)
+                inputDir = isFacingRight ? Vector2.right : Vector2.left;
+
+            dashDirection = inputDir.normalized;
+            dashStartPos = rb.position; // стартова позиція дашу
+
             isDashing = true;
             canDash = false;
             dashTimeLeft = dashDuration;
             dashCooldownTimer = dashCooldown;
+
+            // Обрізати гравітацію і поточну швидкість
+            rb.linearVelocity = Vector2.zero;
+            rb.gravityScale = 0f;
         }
     }
 
