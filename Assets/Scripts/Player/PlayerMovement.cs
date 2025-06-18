@@ -5,6 +5,7 @@ using UnityEngine.InputSystem;
 
 public class PlayerMovement: MonoBehaviour
 {
+    #region Initialization
     public Rigidbody2D rb;
     bool isFacingRight = true;
 
@@ -44,6 +45,15 @@ public class PlayerMovement: MonoBehaviour
     private int remainingDashes;
     private Vector2 dashDirection;
 
+    // Step-up mechanic
+    [Header("Player step-up")]
+    [SerializeField] Transform stepRayUpper;
+    [SerializeField] Transform stepRayLower;
+    [SerializeField] float stepHeight = 0.08f;
+    [SerializeField] float stepSmooth = 0.04f;
+    [SerializeField] LayerMask Ground;
+    #endregion
+
     private void Start()
     {
         remainingDashes = maxDashes;
@@ -52,8 +62,6 @@ public class PlayerMovement: MonoBehaviour
     void Update()
     {
         GroundCheck();
-
-        // Processing buffers
 
         if (jumpBufferTimer > 0)
             jumpBufferTimer -= Time.deltaTime;
@@ -83,32 +91,60 @@ public class PlayerMovement: MonoBehaviour
             dashBufferTimer = 0f;
         }
 
+        Flip();
+
+        if (isGrounded && remainingDashes < maxDashes && !isDashing)
+        {
+            remainingDashes = maxDashes;
+            dashOnCooldown = false;
+        }
+    }
+    private void FixedUpdate()
+    {
         if (!isDashing)
         {
             rb.linearVelocity = new Vector2(moveInput.x * moveSpeed, rb.linearVelocity.y);
             Flip();
-        }
-
-        // Refill dash if grounded
-        if (isGrounded && remainingDashes < maxDashes && !isDashing && !dashOnCooldown)
-        {
-            remainingDashes = maxDashes;
+            StepUp();
         }
     }
 
-    // Окремий метод для стрибка
-    private void DoJump()
-    {
-        rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpPower);
-    }
-
-    // Методи для прийому інпуту
+    #region Movement
     public void Move(InputAction.CallbackContext context)
     {
         moveInput = context.ReadValue<Vector2>();
         horizontalMovement = moveInput.x;
     }
+    void StepUp()
+    {
+        Vector2 dir = Vector2.right * transform.localScale.x;
 
+        RaycastHit2D hitLower = Physics2D.Raycast(stepRayLower.position, dir, 0.1f, groundLayer);
+        Debug.DrawRay(stepRayLower.position, dir * 0.1f, Color.red);
+
+        if (hitLower.collider != null)
+        {
+            RaycastHit2D hitUpper = Physics2D.Raycast(stepRayUpper.position, dir, 0.2f, groundLayer);
+            Debug.DrawRay(stepRayUpper.position, dir * 0.2f, Color.green);
+
+            if (hitUpper.collider == null)
+            {
+                float obstacleHeight = hitLower.point.y - rb.position.y;
+
+                if (obstacleHeight <= stepHeight + 0.01f)
+                {
+                    rb.position += Vector2.up * stepSmooth;
+                }
+            }
+        }
+    }
+    #endregion
+
+    #region Jumping
+    private void DoJump()
+    {
+        rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpPower);
+    }
     public void Jump(InputAction.CallbackContext context)
     {
         if (context.started)
@@ -116,7 +152,9 @@ public class PlayerMovement: MonoBehaviour
             jumpBufferTimer = jumpBufferTime;
         }
     }
+    #endregion
 
+    #region Dashing
     public void Dash(InputAction.CallbackContext context)
     {
         if (context.started)
@@ -128,32 +166,37 @@ public class PlayerMovement: MonoBehaviour
     private IEnumerator DashCoroutine(Vector2 inputDirection)
     {
         isDashing = true;
-        dashOnCooldown = true;
-        remainingDashes--;
 
         float originalGravity = rb.gravityScale;
         rb.gravityScale = 0f;
 
-        Vector2 dashDir = inputDirection == Vector2.zero
+        dashDirection = inputDirection == Vector2.zero
             ? (isFacingRight ? Vector2.right : Vector2.left)
             : inputDirection.normalized;
 
-        rb.linearVelocity = Vector2.zero;
-
-        float dashTimer = 0f;
-        while (dashTimer < dashDuration)
+        float dashTime = 0f;
+        while (dashTime < dashDuration)
         {
-            rb.MovePosition(rb.position + dashDir * dashSpeed * Time.fixedDeltaTime);
-            dashTimer += Time.fixedDeltaTime;
+            rb.MovePosition(rb.position + dashDirection * dashSpeed * Time.fixedDeltaTime);
+            dashTime += Time.fixedDeltaTime;
             yield return new WaitForFixedUpdate();
         }
 
         rb.gravityScale = originalGravity;
+        rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0f);
         isDashing = false;
 
-        yield return new WaitForSeconds(dashCooldown);
-        dashOnCooldown = false;
+        remainingDashes--;
+
+        if (!isGrounded && remainingDashes <= 0)
+        {
+            dashOnCooldown = true;
+            yield return new WaitForSeconds(dashCooldown);
+            dashOnCooldown = false;
+            remainingDashes = maxDashes;
+        }
     }
+    #endregion
 
     private void GroundCheck()
     {
@@ -162,14 +205,10 @@ public class PlayerMovement: MonoBehaviour
 
     private void Flip()
     {
-        if (horizontalMovement > 0 && !isFacingRight)
-        {
+        if (moveInput.x > 0 && !isFacingRight)
             FlipImmediate();
-        }
-        else if (horizontalMovement < 0 && isFacingRight)
-        {
+        else if (moveInput.x < 0 && isFacingRight)
             FlipImmediate();
-        }
     }
 
     private void FlipImmediate()
