@@ -93,7 +93,7 @@ public class PlayerMovement: MonoBehaviour
 
         Flip();
 
-        if (isGrounded && remainingDashes < maxDashes && !isDashing)
+        if ((isGrounded || isOnPlatform) && remainingDashes < maxDashes && !isDashing)
         {
             remainingDashes = maxDashes;
             dashOnCooldown = false;
@@ -131,7 +131,7 @@ public class PlayerMovement: MonoBehaviour
             {
                 float obstacleHeight = hitLower.point.y - rb.position.y;
 
-                if (obstacleHeight <= stepHeight + 0.01f)
+                if (obstacleHeight <= stepHeight + 0.01f && Mathf.Abs(moveInput.x) > 0.01f)
                 {
                     rb.position += Vector2.up * stepSmooth;
                 }
@@ -173,7 +173,6 @@ public class PlayerMovement: MonoBehaviour
         dashDirection = inputDirection == Vector2.zero
             ? (isFacingRight ? Vector2.right : Vector2.left)
             : inputDirection.normalized;
-
         float dashTime = 0f;
         while (dashTime < dashDuration)
         {
@@ -188,19 +187,21 @@ public class PlayerMovement: MonoBehaviour
 
         remainingDashes--;
 
-        if (!isGrounded && remainingDashes <= 0)
+        if (remainingDashes <= 0)
         {
             dashOnCooldown = true;
             yield return new WaitForSeconds(dashCooldown);
             dashOnCooldown = false;
-            remainingDashes = maxDashes;
         }
     }
     #endregion
+    private bool isOnPlatform;
 
+    public LayerMask platformLayer;
     private void GroundCheck()
     {
         isGrounded = Physics2D.OverlapBox(groundCheckPos.position, groundCheckSize, 0, groundLayer);
+        isOnPlatform = Physics2D.OverlapBox(groundCheckPos.position, groundCheckSize, 0, platformLayer);
     }
 
     private void Flip()
