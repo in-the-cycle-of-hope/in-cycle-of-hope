@@ -5,15 +5,13 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.Playables;
 
-public class PlayerMovement: MonoBehaviour
+public class PlayerMovement : MonoBehaviour
 {
     #region Initialization
     public Rigidbody2D rb;
     bool isFacingRight = true;
+    public Vector3 respawnPoint;
 
-    private Collider2D[] groundHitBuffer = new Collider2D[1];
-    private Collider2D[] platformHitBuffer = new Collider2D[1];
-    private Collider2D[] wallHitBuffer = new Collider2D[1];
     private RaycastHit2D[] lowerRayHitBuffer = new RaycastHit2D[1];
     private RaycastHit2D[] upperRayHitBuffer = new RaycastHit2D[1];
     private WaitForSeconds _dashCooldownWait;
@@ -24,7 +22,6 @@ public class PlayerMovement: MonoBehaviour
     float horizontalMovement;
     Vector2 moveInput;
     private bool isOnPlatform;
-    public LayerMask decorPlatformLayer;
 
     [Header("Jumping")]
     public float jumpPower = 10f;
@@ -101,6 +98,15 @@ public class PlayerMovement: MonoBehaviour
     private float coyoteTime = 0.15f;
     private float coyoteTimer = 0f;
     #endregion
+    public void RespawnNow()
+    {
+        transform.position = respawnPoint;
+    }
+
+    public void RespawnAt(Vector3 newRespawnPoint)
+    {
+        transform.position = newRespawnPoint;
+    }
     private void Start()
     {
         remainingDashes = maxDashes;
@@ -152,16 +158,7 @@ public class PlayerMovement: MonoBehaviour
                 isWallJumping = false;
             }
         }
-        //if (isGrabbingWall && isWallDetected && !isOutOfStamina)
-        //{
-        //    isWallGrabbingActive = true;
-        //    isGrabbingWall = true;
-        //}
-        //else if (!isGrabbingWall || isOutOfStamina)
-        //{
-        //    isWallGrabbingActive = false;
-        //    isGrabbingWall = false;
-        //}
+
     }
     private void FixedUpdate()
 
@@ -173,24 +170,36 @@ public class PlayerMovement: MonoBehaviour
         }
         if (isWallGrabbingActive)
         {
-            rb.linearVelocity = new Vector2(0f, moveInput.y * wallClimbSpeed);
-            if (!isWallJumping)
+            if (Mathf.Abs(moveInput.y) > 0.01f)
             {
+                rb.linearVelocity = new Vector2(0f, moveInput.y * wallClimbSpeed);
                 if (moveInput.y > 0.01f)
                     currentStamina -= climbStaminaDrain * Time.fixedDeltaTime;
                 else if (moveInput.y < -0.01f)
                     currentStamina -= descendStaminaDrain * Time.fixedDeltaTime;
-                else
-                    currentStamina -= idleStaminaDrain * Time.fixedDeltaTime;
             }
+            else
+            {
+                rb.linearVelocity = Vector2.zero;
+                rb.Sleep(); // ❄️ замороження при висінні
+                currentStamina -= idleStaminaDrain * Time.fixedDeltaTime;
+            }
+
             currentStamina = Mathf.Clamp(currentStamina, 0f, maxStamina);
+
             if (isOutOfStamina)
             {
                 isGrabbingWall = false;
                 isWallGrabbingActive = false;
                 rb.gravityScale = defaultGravity;
+
+                rb.constraints = RigidbodyConstraints2D.FreezeRotation; // 🔓 розморозити вісь Y
+                rb.WakeUp(); // 🌞 пробудити фізику
+
                 wallJumpGraceTimer = wallJumpGracePeriod;
             }
+            TryLedgeClimb();
+
             return;
         }
         // Звичайний рух
@@ -283,14 +292,26 @@ public class PlayerMovement: MonoBehaviour
     public void Grab(InputAction.CallbackContext context)
     {
         if (context.started)
+        {
             isGrabbingWall = true;
+        }
         else if (context.canceled)
+        {
             isGrabbingWall = false;
+
+            // 🔄 Якщо гравець відпустив кнопку — гарантуємо пробудження
+            if (rb.IsSleeping())
+            {
+                rb.WakeUp();
+                rb.constraints = RigidbodyConstraints2D.FreezeRotation;
+            }
+        }
     }
     private void HandleWallGrabbing()
     {
-        int numWallHits = Physics2D.OverlapBoxNonAlloc(wallCheckPos.position, wallCheckSize, 0f, wallLayer, wallHitBuffer);
-        isWallDetected = numWallHits > 0;
+        Collider2D wallCollider = Physics2D.OverlapBox(wallCheckPos.position, wallCheckSize, 0f, wallLayer);
+        isWallDetected = wallCollider != null;
+
         // Вихід, якщо в момент стрибка від стіни або грейс-період
         if (isWallJumping || wallJumpGraceTimer > 0)
         {
@@ -298,17 +319,21 @@ public class PlayerMovement: MonoBehaviour
             {
                 isWallGrabbingActive = false;
                 rb.gravityScale = defaultGravity;
+                rb.constraints = RigidbodyConstraints2D.FreezeRotation;
+                rb.WakeUp();
             }
             return;
         }
+
         // ✅ Перевірка хапання з урахуванням тимчасової заборони
         bool canActivateWallGrab =
-            isGrabbingWall &&
-            isWallDetected &&
-            !isGrounded &&
-            !isDashing &&
-            !isOutOfStamina &&
-            !isWallGrabbingTemporarilyDisabled;
+        isGrabbingWall &&
+        isWallDetected &&
+        !isGrounded &&
+        !isDashing &&
+        !isOutOfStamina &&
+        !isWallGrabbingTemporarilyDisabled;
+
         if (canActivateWallGrab)
         {
             if (!isWallGrabbingActive)
@@ -326,11 +351,62 @@ public class PlayerMovement: MonoBehaviour
                 rb.gravityScale = defaultGravity;
             }
         }
+
         // Відновлення витривалості на землі
         if (isGrounded && currentStamina < maxStamina)
         {
             currentStamina += staminaRegenRate * Time.deltaTime;
             currentStamina = Mathf.Clamp(currentStamina, 0f, maxStamina);
+        }
+    }
+    private IEnumerator LedgeClimbCoroutine(Vector2 targetPosition)
+    {
+        float duration = 0.3f;
+        Vector2 startPosition = rb.position;
+        float time = 0f;
+
+        rb.gravityScale = 0f;
+        rb.linearVelocity = Vector2.zero;
+
+        while (time < duration)
+        {
+            time += Time.deltaTime;
+            float t = time / duration;
+
+            float height = 1.5f;
+            float parabola = 4 * height * t * (1 - t);
+
+            Vector2 newPos = Vector2.Lerp(startPosition, targetPosition, t);
+            newPos.y += parabola;
+
+            rb.MovePosition(newPos);
+
+            yield return null;
+        }
+
+        rb.MovePosition(targetPosition);
+
+        rb.gravityScale = defaultGravity;
+        rb.WakeUp();
+
+        isGrabbingWall = false;
+        isWallGrabbingActive = false;
+    }
+
+    private void TryLedgeClimb()
+    {
+        Vector2 dir = isFacingRight ? Vector2.right : Vector2.left;
+
+        RaycastHit2D lowerHit = Physics2D.Raycast(wallCheckPos.position, dir, 0.5f, wallLayer);
+        Vector2 upperCheckOrigin = wallCheckPos.position + Vector3.up * 1.2f;
+        RaycastHit2D upperHit = Physics2D.Raycast(upperCheckOrigin, dir, 0.5f, wallLayer);
+        Vector2 ledgeCheckOrigin = wallCheckPos.position + Vector3.up * 1.2f + (Vector3)dir * 0.5f;
+        RaycastHit2D groundHit = Physics2D.Raycast(ledgeCheckOrigin, Vector2.down, 1f, Ground);
+
+        if (lowerHit.collider != null && upperHit.collider == null && groundHit.collider != null)
+        {
+            Vector2 targetPosition = new Vector2(groundHit.point.x, groundHit.point.y + 0.1f);
+            StartCoroutine(LedgeClimbCoroutine(targetPosition));
         }
     }
     void OnGUI()
@@ -408,6 +484,7 @@ public class PlayerMovement: MonoBehaviour
         while (dashTime < dashDuration)
         {
             rb.MovePosition(rb.position + dashDirection * dashSpeed * Time.fixedDeltaTime);
+            StepUp();
             dashTime += Time.fixedDeltaTime;
             yield return new WaitForFixedUpdate();
         }
@@ -425,18 +502,13 @@ public class PlayerMovement: MonoBehaviour
     #endregion
     private void GroundCheck()
     {
-        // Для isGrounded
-        int numGroundHits = Physics2D.OverlapBoxNonAlloc(groundCheckPos.position, groundCheckSize, 0, groundLayer, groundHitBuffer);
-        isGrounded = numGroundHits > 0;
-
-        // Для isOnPlatform
-        int numPlatformHits = Physics2D.OverlapBoxNonAlloc(groundCheckPos.position, groundCheckSize, 0, decorPlatformLayer, platformHitBuffer);
-        isOnPlatform = numPlatformHits > 0;
+        isGrounded = Physics2D.OverlapBox(groundCheckPos.position, groundCheckSize, 0, groundLayer);
 
         if (isGrounded && rb.gravityScale != defaultGravity)
         {
             rb.gravityScale = defaultGravity;
         }
+
         if (isGrounded && !wasGroundedLastFrame)
         {
             currentStamina = maxStamina;
