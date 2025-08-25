@@ -11,6 +11,13 @@ public class PlayerMovement : MonoBehaviour
     public Rigidbody2D rb;
     bool isFacingRight = true;
     public Vector3 respawnPoint;
+    public Animator fadeAnimator;
+    public Animator fadeAnimator2;
+    public GameObject blackScreen;
+    public GameObject blackScreen2;
+    public float fadeDelay = 0.2f;
+    public PlayerInput playerInput;
+    public bool isControlBlocked;
 
     private RaycastHit2D[] lowerRayHitBuffer = new RaycastHit2D[1];
     private RaycastHit2D[] upperRayHitBuffer = new RaycastHit2D[1];
@@ -19,8 +26,8 @@ public class PlayerMovement : MonoBehaviour
 
     [Header("Movement")]
     public float moveSpeed = 5f;
-    float horizontalMovement;
-    Vector2 moveInput;
+    public float horizontalMovement;
+    public Vector2 moveInput;
     private bool isOnPlatform;
 
     [Header("Jumping")]
@@ -41,8 +48,8 @@ public class PlayerMovement : MonoBehaviour
 
     [Header("Stamina")]
     [SerializeField] private float maxStamina = 100f;
-    [SerializeField] private float climbStaminaDrain = 25f; // Витрати при підйомі
-    [SerializeField] private float descendStaminaDrain = 50f; // НОВА ЗМІННА: Витрати при спуску
+    [SerializeField] private float climbStaminaDrain = 25f;
+    [SerializeField] private float descendStaminaDrain = 50f;
     [SerializeField] private float idleStaminaDrain = 5f;
     [SerializeField] private float staminaRegenRate = 30f;
 
@@ -98,14 +105,34 @@ public class PlayerMovement : MonoBehaviour
     private float coyoteTime = 0.15f;
     private float coyoteTimer = 0f;
     #endregion
+    private void Awake()
+    {
+        playerInput = GetComponent<PlayerInput>();
+    }
     public void RespawnNow()
     {
-        transform.position = respawnPoint;
+       transform.position = respawnPoint;
     }
 
-    public void RespawnAt(Vector3 newRespawnPoint)
+    public IEnumerator FadeRespawnTo(Vector3 newPosition)
     {
-        transform.position = newRespawnPoint;
+        playerInput.enabled = false;
+        // Fade out
+        blackScreen.SetActive(true);
+        fadeAnimator.SetTrigger("BlackScreen");
+        yield return new WaitForSeconds(fadeDelay);
+
+        // Телепортуємо гравця
+        transform.position = newPosition;
+
+        // Fade in
+        blackScreen.SetActive(false);
+        blackScreen2.SetActive(true);
+        fadeAnimator2.SetTrigger("BlackScreen2");
+        yield return new WaitForSeconds(fadeDelay);
+
+        blackScreen2.SetActive(false);
+        playerInput.enabled = true;
     }
     private void Start()
     {
@@ -119,6 +146,7 @@ public class PlayerMovement : MonoBehaviour
     }
     void Update()
     {
+        if (isControlBlocked) return;
         GroundCheck();
         jumpBufferTimer -= Time.deltaTime;
         dashBufferTimer -= Time.deltaTime;
@@ -144,7 +172,6 @@ public class PlayerMovement : MonoBehaviour
             StartCoroutine(DashCoroutine(dashInput.normalized));
             dashBufferTimer = 0f;
         }
-        Flip();
         if ((isGrounded || isOnPlatform) && remainingDashes < maxDashes && !isDashing)
         {
             remainingDashes = maxDashes;
@@ -158,11 +185,10 @@ public class PlayerMovement : MonoBehaviour
                 isWallJumping = false;
             }
         }
-
     }
     private void FixedUpdate()
-
     {
+        if (isControlBlocked) return;
         if (isDashing) { return; }
         if (isWallJumping)
         {
@@ -172,6 +198,7 @@ public class PlayerMovement : MonoBehaviour
         {
             if (Mathf.Abs(moveInput.y) > 0.01f)
             {
+                rb.constraints = RigidbodyConstraints2D.FreezeRotation; // розморозити для руху
                 rb.linearVelocity = new Vector2(0f, moveInput.y * wallClimbSpeed);
                 if (moveInput.y > 0.01f)
                     currentStamina -= climbStaminaDrain * Time.fixedDeltaTime;
@@ -180,8 +207,8 @@ public class PlayerMovement : MonoBehaviour
             }
             else
             {
+                rb.constraints = RigidbodyConstraints2D.FreezeRotation | RigidbodyConstraints2D.FreezePositionY;
                 rb.linearVelocity = Vector2.zero;
-                rb.Sleep(); // ❄️ замороження при висінні
                 currentStamina -= idleStaminaDrain * Time.fixedDeltaTime;
             }
 
@@ -194,23 +221,21 @@ public class PlayerMovement : MonoBehaviour
                 rb.gravityScale = defaultGravity;
 
                 rb.constraints = RigidbodyConstraints2D.FreezeRotation; // 🔓 розморозити вісь Y
-                rb.WakeUp(); // 🌞 пробудити фізику
 
                 wallJumpGraceTimer = wallJumpGracePeriod;
             }
-            TryLedgeClimb();
 
             return;
         }
         // Звичайний рух
         rb.linearVelocity = new Vector2(horizontalMovement * moveSpeed, rb.linearVelocity.y);
-        Flip();
         StepUp();
     }
     #region Movement
     private float rawHorizontalInput;
     public void Move(InputAction.CallbackContext context)
     {
+        if (isControlBlocked) return;
         Vector2 rawMoveInput = context.ReadValue<Vector2>();
         rawHorizontalInput = rawMoveInput.x;
         if (isWallGrabbingActive)
@@ -223,6 +248,7 @@ public class PlayerMovement : MonoBehaviour
             moveInput = rawMoveInput;
             horizontalMovement = moveInput.x;
         }
+        Flip();
     }
     void StepUp()
     {
@@ -234,9 +260,7 @@ public class PlayerMovement : MonoBehaviour
         if (numLowerHits > 0)
         {
             RaycastHit2D hitLower = lowerRayHitBuffer[0];
-
             int numUpperHits = Physics2D.RaycastNonAlloc(stepRayUpper.position, dir, upperRayHitBuffer, 0.2f, Ground); // Змінено на Ground
-            UnityEngine.Debug.DrawRay(stepRayUpper.position, dir * 0.2f, Color.green);
 
             if (numUpperHits == 0)
             {
@@ -249,6 +273,7 @@ public class PlayerMovement : MonoBehaviour
         }
     }
     #endregion
+
     #region Jumping
     private void DoJump()
     {
@@ -288,6 +313,7 @@ public class PlayerMovement : MonoBehaviour
         }
     }
     #endregion
+
     #region Climb
     public void Grab(InputAction.CallbackContext context)
     {
@@ -299,18 +325,29 @@ public class PlayerMovement : MonoBehaviour
         {
             isGrabbingWall = false;
 
-            // 🔄 Якщо гравець відпустив кнопку — гарантуємо пробудження
-            if (rb.IsSleeping())
+            if (isWallGrabbingActive)
             {
-                rb.WakeUp();
+                isWallGrabbingActive = false;
+                rb.gravityScale = defaultGravity;
                 rb.constraints = RigidbodyConstraints2D.FreezeRotation;
             }
         }
     }
     private void HandleWallGrabbing()
     {
-        Collider2D wallCollider = Physics2D.OverlapBox(wallCheckPos.position, wallCheckSize, 0f, wallLayer);
-        isWallDetected = wallCollider != null;
+        // 👉 Логіка "коли треба перевіряти наявність стіни":
+        bool shouldCheckWall =
+            !isGrounded && (isGrabbingWall || wallJumpGraceTimer > 0 || wallJumpInputBufferTimer > 0);
+
+        if (shouldCheckWall)
+        {
+            Collider2D wallCollider = Physics2D.OverlapBox(wallCheckPos.position, wallCheckSize, 0f, wallLayer);
+            isWallDetected = wallCollider != null;
+        }
+        else
+        {
+            isWallDetected = false;
+        }
 
         // Вихід, якщо в момент стрибка від стіни або грейс-період
         if (isWallJumping || wallJumpGraceTimer > 0)
@@ -320,12 +357,11 @@ public class PlayerMovement : MonoBehaviour
                 isWallGrabbingActive = false;
                 rb.gravityScale = defaultGravity;
                 rb.constraints = RigidbodyConstraints2D.FreezeRotation;
-                rb.WakeUp();
             }
             return;
         }
 
-        // ✅ Перевірка хапання з урахуванням тимчасової заборони
+        // Перевірка хапання з урахуванням тимчасової заборони
         bool canActivateWallGrab =
         isGrabbingWall &&
         isWallDetected &&
@@ -341,6 +377,8 @@ public class PlayerMovement : MonoBehaviour
                 isWallGrabbingActive = true;
                 rb.gravityScale = 0f;
                 rb.linearVelocity = Vector2.zero;
+
+                rb.constraints = RigidbodyConstraints2D.FreezeRotation | RigidbodyConstraints2D.FreezePositionY;
             }
         }
         else
@@ -349,6 +387,7 @@ public class PlayerMovement : MonoBehaviour
             {
                 isWallGrabbingActive = false;
                 rb.gravityScale = defaultGravity;
+                rb.constraints = RigidbodyConstraints2D.FreezeRotation;
             }
         }
 
@@ -359,56 +398,6 @@ public class PlayerMovement : MonoBehaviour
             currentStamina = Mathf.Clamp(currentStamina, 0f, maxStamina);
         }
     }
-    private IEnumerator LedgeClimbCoroutine(Vector2 targetPosition)
-    {
-        float duration = 0.3f;
-        Vector2 startPosition = rb.position;
-        float time = 0f;
-
-        rb.gravityScale = 0f;
-        rb.linearVelocity = Vector2.zero;
-
-        while (time < duration)
-        {
-            time += Time.deltaTime;
-            float t = time / duration;
-
-            float height = 1.5f;
-            float parabola = 4 * height * t * (1 - t);
-
-            Vector2 newPos = Vector2.Lerp(startPosition, targetPosition, t);
-            newPos.y += parabola;
-
-            rb.MovePosition(newPos);
-
-            yield return null;
-        }
-
-        rb.MovePosition(targetPosition);
-
-        rb.gravityScale = defaultGravity;
-        rb.WakeUp();
-
-        isGrabbingWall = false;
-        isWallGrabbingActive = false;
-    }
-
-    private void TryLedgeClimb()
-    {
-        Vector2 dir = isFacingRight ? Vector2.right : Vector2.left;
-
-        RaycastHit2D lowerHit = Physics2D.Raycast(wallCheckPos.position, dir, 0.5f, wallLayer);
-        Vector2 upperCheckOrigin = wallCheckPos.position + Vector3.up * 1.2f;
-        RaycastHit2D upperHit = Physics2D.Raycast(upperCheckOrigin, dir, 0.5f, wallLayer);
-        Vector2 ledgeCheckOrigin = wallCheckPos.position + Vector3.up * 1.2f + (Vector3)dir * 0.5f;
-        RaycastHit2D groundHit = Physics2D.Raycast(ledgeCheckOrigin, Vector2.down, 1f, Ground);
-
-        if (lowerHit.collider != null && upperHit.collider == null && groundHit.collider != null)
-        {
-            Vector2 targetPosition = new Vector2(groundHit.point.x, groundHit.point.y + 0.1f);
-            StartCoroutine(LedgeClimbCoroutine(targetPosition));
-        }
-    }
     void OnGUI()
     {
         GUI.Label(new Rect(10, 10, 200, 20), $"Stamina: {Mathf.FloorToInt(currentStamina)}");
@@ -416,6 +405,7 @@ public class PlayerMovement : MonoBehaviour
     private bool isWallGrabbingTemporarilyDisabled = false;
     private void DoWallJump()
     {
+
         isWallJumping = true;
         wallJumpTimer = wallJumpDuration;
         rb.linearVelocity = Vector2.zero;
@@ -437,16 +427,15 @@ public class PlayerMovement : MonoBehaviour
         }
         else
         {
-            // 👇 НОВА УМОВА — якщо нічого не натиснуто, все одно стрибаємо ВГОРУ
             jumpForceVector = Vector2.up * wallJumpForce;
             currentStamina -= wallJumpStaminaCost;
         }
         currentStamina = Mathf.Clamp(currentStamina, 0f, maxStamina);
         rb.AddForce(jumpForceVector, ForceMode2D.Impulse);
-        // Якщо стрибок вбік — фліпаємось
+
         if (isPressingAwayFromWall)
         {
-            if ((isFacingRight && wallDir == -1) || (!isFacingRight && wallDir == 1))
+            if ((isFacingRight && wallDir == -1) || (!isFacingRight && wallDir == 1) && !isControlBlocked)
             {
                 FlipImmediate();
             }
@@ -464,6 +453,7 @@ public class PlayerMovement : MonoBehaviour
         rb.gravityScale = defaultGravity;
     }
     #endregion
+
     #region Dashing
     public void Dash(InputAction.CallbackContext context)
     {
@@ -517,6 +507,8 @@ public class PlayerMovement : MonoBehaviour
     }
     private void Flip()
     {
+        if (isControlBlocked) return;
+        if (Mathf.Abs(moveInput.x) < 0.01f) return;
         if (moveInput.x > 0 && !isFacingRight)
             FlipImmediate();
         else if (moveInput.x < 0 && isFacingRight)

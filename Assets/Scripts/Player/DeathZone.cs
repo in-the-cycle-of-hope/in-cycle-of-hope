@@ -11,7 +11,7 @@ public class DeathZone : MonoBehaviour
             PlayerMovement playerRespawn = collision.gameObject.GetComponent<PlayerMovement>();
             if (playerRespawn != null)
             {
-                playerRespawn.RespawnAt(assignedCheckpoint.position);
+                StartCoroutine(playerRespawn.FadeRespawnTo(assignedCheckpoint.position));
             }
         }
     }
