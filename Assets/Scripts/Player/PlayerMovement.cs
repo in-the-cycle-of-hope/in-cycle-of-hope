@@ -57,9 +57,9 @@ public class PlayerMovement : MonoBehaviour
     private bool isOutOfStamina => currentStamina <= 0f;
 
     [Header("Wall Jump Settings")]
-    [SerializeField] private float wallJumpForce = 12f; // Загальна сила стрибка
-    [SerializeField] private Vector2 wallJumpClimb = new Vector2(0.7f, 1.5f); // Вектор для стрибка "вгору-вбік" (від стіни)
-    [SerializeField] private float wallJumpDuration = 0.2f; // Як довго гравець знаходиться у стані isWallJumping
+    [SerializeField] private float wallJumpForce = 12f;
+    [SerializeField] private Vector2 wallJumpClimb = new Vector2(0.7f, 1.5f);
+    [SerializeField] private float wallJumpDuration = 0.2f;
     [SerializeField] private float wallJumpStaminaCost = 15f;
     [SerializeField] private float wallJumpGravityMultiplier = 1.5f;
     [SerializeField] private float wallJumpGracePeriod = 0.12f;
@@ -116,21 +116,16 @@ public class PlayerMovement : MonoBehaviour
 
     public IEnumerator FadeRespawnTo(Vector3 newPosition)
     {
+        // Анімація смерті
         playerInput.enabled = false;
-        // Fade out
         blackScreen.SetActive(true);
         fadeAnimator.SetTrigger("BlackScreen");
         yield return new WaitForSeconds(fadeDelay);
-
-        // Телепортуємо гравця
         transform.position = newPosition;
-
-        // Fade in
         blackScreen.SetActive(false);
         blackScreen2.SetActive(true);
         fadeAnimator2.SetTrigger("BlackScreen2");
         yield return new WaitForSeconds(fadeDelay);
-
         blackScreen2.SetActive(false);
         playerInput.enabled = true;
     }
@@ -139,14 +134,16 @@ public class PlayerMovement : MonoBehaviour
         remainingDashes = maxDashes;
         defaultGravity = rb.gravityScale;
         currentStamina = maxStamina;
-
-        // Ініціалізуй тут
         _dashCooldownWait = new WaitForSeconds(dashCooldown);
         _wallJumpDurationWait = new WaitForSeconds(wallJumpDuration);
     }
     void Update()
     {
-        if (isControlBlocked) return;
+        if (isControlBlocked)
+        {
+            moveInput = Vector2.zero;
+            return;
+        }
         GroundCheck();
         jumpBufferTimer -= Time.deltaTime;
         dashBufferTimer -= Time.deltaTime;
@@ -188,7 +185,11 @@ public class PlayerMovement : MonoBehaviour
     }
     private void FixedUpdate()
     {
-        if (isControlBlocked) return;
+        if (isControlBlocked)
+        {
+            moveInput = Vector2.zero;
+            return;
+        }
         if (isDashing) { return; }
         if (isWallJumping)
         {
@@ -198,7 +199,7 @@ public class PlayerMovement : MonoBehaviour
         {
             if (Mathf.Abs(moveInput.y) > 0.01f)
             {
-                rb.constraints = RigidbodyConstraints2D.FreezeRotation; // розморозити для руху
+                rb.constraints = RigidbodyConstraints2D.FreezeRotation;
                 rb.linearVelocity = new Vector2(0f, moveInput.y * wallClimbSpeed);
                 if (moveInput.y > 0.01f)
                     currentStamina -= climbStaminaDrain * Time.fixedDeltaTime;
@@ -220,7 +221,7 @@ public class PlayerMovement : MonoBehaviour
                 isWallGrabbingActive = false;
                 rb.gravityScale = defaultGravity;
 
-                rb.constraints = RigidbodyConstraints2D.FreezeRotation; // 🔓 розморозити вісь Y
+                rb.constraints = RigidbodyConstraints2D.FreezeRotation;
 
                 wallJumpGraceTimer = wallJumpGracePeriod;
             }
@@ -290,19 +291,19 @@ public class PlayerMovement : MonoBehaviour
                 {
                     bufferedWallJumpInputX = rawHorizontalInput;
                     wallJumpInputBufferTimer = wallJumpInputBufferTime;
-                    // Якщо не хапаємося за стіну — не стрибаємо
+
                     if (!isGrabbingWall)
                         return;
-                    // Заборона стрибка в напрямку стіни
+
                     bool intendsWrongDirection =
                         (isFacingRight && bufferedWallJumpInputX > horizontalInputThreshold) ||
                         (!isFacingRight && bufferedWallJumpInputX < -horizontalInputThreshold);
                     if (intendsWrongDirection)
                         return;
-                    // Якщо не вистачає витривалості на стрибок вгору — скасовуємо
+
                     if (moveInput.y > 0.5f && currentStamina < wallJumpStaminaCost)
                         return;
-                    // Стрибаємо!
+
                     wallJumpGraceTimer = 0f;
                     DoWallJump();
                     jumpBufferTimer = 0f;
@@ -335,7 +336,6 @@ public class PlayerMovement : MonoBehaviour
     }
     private void HandleWallGrabbing()
     {
-        // 👉 Логіка "коли треба перевіряти наявність стіни":
         bool shouldCheckWall =
             !isGrounded && (isGrabbingWall || wallJumpGraceTimer > 0 || wallJumpInputBufferTimer > 0);
 
@@ -349,7 +349,6 @@ public class PlayerMovement : MonoBehaviour
             isWallDetected = false;
         }
 
-        // Вихід, якщо в момент стрибка від стіни або грейс-період
         if (isWallJumping || wallJumpGraceTimer > 0)
         {
             if (isWallGrabbingActive)
@@ -361,7 +360,6 @@ public class PlayerMovement : MonoBehaviour
             return;
         }
 
-        // Перевірка хапання з урахуванням тимчасової заборони
         bool canActivateWallGrab =
         isGrabbingWall &&
         isWallDetected &&
@@ -391,7 +389,6 @@ public class PlayerMovement : MonoBehaviour
             }
         }
 
-        // Відновлення витривалості на землі
         if (isGrounded && currentStamina < maxStamina)
         {
             currentStamina += staminaRegenRate * Time.deltaTime;
@@ -507,8 +504,7 @@ public class PlayerMovement : MonoBehaviour
     }
     private void Flip()
     {
-        if (isControlBlocked) return;
-        if (Mathf.Abs(moveInput.x) < 0.01f) return;
+        if (isControlBlocked || Time.timeScale == 0f) return;
         if (moveInput.x > 0 && !isFacingRight)
             FlipImmediate();
         else if (moveInput.x < 0 && isFacingRight)
