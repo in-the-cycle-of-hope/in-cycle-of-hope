@@ -1,13 +1,19 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.Playables;
+using Fungus;
 
 public class PlayerMovement : MonoBehaviour
 {
     #region Initialization
+
+    public Flowchart flowchart;
+    public DialogTrigger currentInteractable;
+
     public Rigidbody2D rb;
     bool isFacingRight = true;
     public Vector3 respawnPoint;
@@ -23,6 +29,12 @@ public class PlayerMovement : MonoBehaviour
     private RaycastHit2D[] upperRayHitBuffer = new RaycastHit2D[1];
     private WaitForSeconds _dashCooldownWait;
     private WaitForSeconds _wallJumpDurationWait;
+
+    [Header("Tutorial Abilities")]
+    public bool canMove = false;
+    public bool canJump = false;
+    public bool canDash = false;
+    public bool canGrabWall = false;
 
     [Header("Movement")]
     public float moveSpeed = 5f;
@@ -73,6 +85,17 @@ public class PlayerMovement : MonoBehaviour
     private bool isWallJumping = false;
     private float wallJumpTimer;
 
+    [Header("Ledge Climb")]
+    [SerializeField] private float ledgeCheckUp = 1.0f;
+    [SerializeField] private float ledgeCheckForward = 0.25f;
+    [SerializeField] private float ledgeCheckDownDist = 1.5f;
+    [SerializeField] private float ledgeClimbTime = 0.15f;
+    [SerializeField] private float ledgeClimbYOffset = 0.35f;
+    [SerializeField] private float ledgePullBack = 0.10f;
+
+    private bool isClimbingLedge = false;
+
+
     [Header("Dash Settings")]
     public float dashSpeed = 20f;
     public float dashDuration = 0.2f;
@@ -99,19 +122,114 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] float stepHeight = 0.08f;
     [SerializeField] float stepSmooth = 0.04f;
     [SerializeField] LayerMask Ground;
+
     // buffer jump and coyote time
     private float jumpBufferTime = 0.15f;
     private float jumpBufferTimer = 0f;
     private float coyoteTime = 0.15f;
     private float coyoteTimer = 0f;
     #endregion
+    private RigidbodyConstraints2D originalConstraints;
+    public void BlockControl()
+    {
+        isControlBlocked = true;
+        originalConstraints = rb.constraints;
+        rb.constraints = RigidbodyConstraints2D.FreezeAll;
+    }
+
+    public void UnblockControl()
+    {
+        rb.constraints = originalConstraints;
+
+        rb.linearVelocity = Vector2.zero;
+        rb.angularVelocity = 0f;
+
+        isControlBlocked = false;
+    }
+    public void ResetMovementState()
+    {
+        moveInput = Vector2.zero;
+        horizontalMovement = 0f;
+        rawHorizontalInput = 0f;
+
+        rb.linearVelocity = new Vector2(0f, rb.linearVelocity.y);
+        rb.angularVelocity = 0f;
+    }
+
+    private bool hasTriggered = false;
+    private void OnTriggerEnter2D(Collider2D collision)
+    {
+        if (hasTriggered) return;
+        DialogTrigger interactable = collision.GetComponent<DialogTrigger>();
+        if (interactable)
+        {
+            hasTriggered = true;
+            flowchart.ExecuteBlock(interactable.blockName);
+            Collider2D triggerCollider = collision.GetComponent<Collider2D>();
+            if (triggerCollider != null)
+            {
+                triggerCollider.enabled = false;
+            }
+        }
+    }
+    public void EnableMove()
+    {
+        canMove = true;
+    }
+
+    public void EnableJump()
+    {
+        canJump = true;
+    }
+
+    public void EnableDash()
+    {
+        canDash = true;
+    }
+
+    public void EnableWallGrab()
+    {
+        canGrabWall = true;
+    }
+
+    public void EnableAllControls()
+    {
+        canMove = true;
+        canJump = true;
+        canDash = true;
+        canGrabWall = true;
+    }
+
+    public void Tutorial_MoveDone()
+    {
+        flowchart.ExecuteBlock("JumpTutorial");
+    }
+
+    public void Tutorial_JumpDone()
+    {
+        flowchart.ExecuteBlock("DashTutorial");
+    }
+
+    public void Tutorial_DashDone()
+    {
+        flowchart.ExecuteBlock("WallGrabTutorial");
+    }
+
+    public void Tutorial_WallGrabDone()
+    {
+        flowchart.ExecuteBlock("Done");
+    }
+    private void OnTriggerExit2D(Collider2D collision)
+    {
+        currentInteractable = null;
+    }
     private void Awake()
     {
         playerInput = GetComponent<PlayerInput>();
     }
     public void RespawnNow()
     {
-       transform.position = respawnPoint;
+        transform.position = respawnPoint;
     }
 
     public IEnumerator FadeRespawnTo(Vector3 newPosition)
@@ -187,7 +305,8 @@ public class PlayerMovement : MonoBehaviour
     {
         if (isControlBlocked)
         {
-            moveInput = Vector2.zero;
+            rb.linearVelocity = Vector2.zero;
+            rb.angularVelocity = 0f;
             return;
         }
         if (isDashing) { return; }
@@ -195,6 +314,11 @@ public class PlayerMovement : MonoBehaviour
         {
             return;
         }
+        if (isWallGrabbingActive && !isClimbingLedge)
+        {
+            TryLedgeClimb();
+        }
+
         if (isWallGrabbingActive)
         {
             if (Mathf.Abs(moveInput.y) > 0.01f)
@@ -236,6 +360,7 @@ public class PlayerMovement : MonoBehaviour
     private float rawHorizontalInput;
     public void Move(InputAction.CallbackContext context)
     {
+        if (!canMove) return;
         if (isControlBlocked) return;
         Vector2 rawMoveInput = context.ReadValue<Vector2>();
         rawHorizontalInput = rawMoveInput.x;
@@ -282,6 +407,7 @@ public class PlayerMovement : MonoBehaviour
     }
     public void Jump(InputAction.CallbackContext context)
     {
+        if (!canJump) return;
         if (context.started)
         {
             jumpBufferTimer = jumpBufferTime;
@@ -318,6 +444,7 @@ public class PlayerMovement : MonoBehaviour
     #region Climb
     public void Grab(InputAction.CallbackContext context)
     {
+        if (!canGrabWall) return;
         if (context.started)
         {
             isGrabbingWall = true;
@@ -449,11 +576,79 @@ public class PlayerMovement : MonoBehaviour
         isWallJumping = false;
         rb.gravityScale = defaultGravity;
     }
+    private void TryLedgeClimb()
+    {
+        Vector2 dir = isFacingRight ? Vector2.right : Vector2.left;
+
+        bool wallBelow = Physics2D.OverlapBox(wallCheckPos.position, wallCheckSize, 0f, wallLayer);
+        if (!wallBelow)
+        {
+            return;
+        }
+
+        Vector2 headCheckPos = (Vector2)wallCheckPos.position + Vector2.up * ledgeCheckUp;
+        Vector2 headBoxSize = new Vector2(0.4f, 0.6f);
+        bool blockedAbove = Physics2D.OverlapBox(headCheckPos, headBoxSize, 0f, wallLayer);
+        if (blockedAbove)
+        {
+            return;
+        }
+
+        Vector2 probePoint = (Vector2)wallCheckPos.position + dir * ledgeCheckForward + Vector2.up * ledgeCheckUp;
+
+        RaycastHit2D hitDown = Physics2D.Raycast(probePoint, Vector2.down, ledgeCheckDownDist, groundLayer);
+        if (!hitDown)
+        {
+            return;
+        }
+
+        Vector3 targetPos = new Vector3(
+            hitDown.point.x - (isFacingRight ? ledgePullBack : -ledgePullBack),
+            hitDown.point.y + ledgeClimbYOffset,
+            transform.position.z
+        );
+
+        StartCoroutine(LedgeClimbRoutine(targetPos));
+    }
+
+    private IEnumerator LedgeClimbRoutine(Vector3 targetPos)
+    {
+        isClimbingLedge = true;
+        isWallGrabbingActive = false;
+        isGrabbingWall = false;
+
+        rb.gravityScale = 0f;
+        rb.linearVelocity = Vector2.zero;
+        rb.angularVelocity = 0f;
+        rb.constraints = RigidbodyConstraints2D.FreezeRotation;
+
+        Vector3 start = transform.position;
+        float t = 0f;
+
+        while (t < 1f)
+        {
+            t += Time.deltaTime / ledgeClimbTime;
+            transform.position = Vector3.Lerp(start, targetPos, Mathf.SmoothStep(0f, 1f, t));
+            yield return null;
+        }
+
+        transform.position = targetPos;
+
+        rb.gravityScale = defaultGravity;
+        rb.constraints = RigidbodyConstraints2D.FreezeRotation;
+
+        yield return new WaitForSeconds(0.05f);
+
+        isClimbingLedge = false;
+    }
+
+
     #endregion
 
     #region Dashing
     public void Dash(InputAction.CallbackContext context)
     {
+        if (!canDash) return;
         if (context.started)
         {
             dashBufferTimer = dashBufferTime;

@@ -14,6 +14,7 @@ public class CameraManager : MonoBehaviour
     }
     public static void SwitchCamera(CinemachineCamera newCamera)
     {
+        Debug.Log("Switching camera to: " + newCamera.name);
         newCamera.Priority = 10;
         ActiveCamera = newCamera;
 
