@@ -30,12 +30,6 @@ public class PlayerMovement : MonoBehaviour
     private WaitForSeconds _dashCooldownWait;
     private WaitForSeconds _wallJumpDurationWait;
 
-    [Header("Tutorial Abilities")]
-    public bool canMove = false;
-    public bool canJump = false;
-    public bool canDash = false;
-    public bool canGrabWall = false;
-
     [Header("Movement")]
     public float moveSpeed = 5f;
     public float horizontalMovement;
@@ -115,7 +109,6 @@ public class PlayerMovement : MonoBehaviour
     public Vector2 groundCheckSize = new Vector2(0.5f, 0.05f);
     public LayerMask groundLayer;
 
-    // Step-up mechanic
     [Header("Player step-up")]
     [SerializeField] Transform stepRayUpper;
     [SerializeField] Transform stepRayLower;
@@ -123,26 +116,33 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] float stepSmooth = 0.04f;
     [SerializeField] LayerMask Ground;
 
-    // buffer jump and coyote time
     private float jumpBufferTime = 0.15f;
     private float jumpBufferTimer = 0f;
     private float coyoteTime = 0.15f;
     private float coyoteTimer = 0f;
+
+    [Header("Tutorial Abilities")]
+    public bool canJump = false;
+    public bool canDash = false;
+    public bool canGrabWall = false;
     #endregion
     private RigidbodyConstraints2D originalConstraints;
     public void BlockControl()
     {
         isControlBlocked = true;
         originalConstraints = rb.constraints;
-        rb.constraints = RigidbodyConstraints2D.FreezeAll;
+        rb.gravityScale = defaultGravity;
+        rb.constraints = RigidbodyConstraints2D.FreezeRotation;
     }
+
 
     public void UnblockControl()
     {
         rb.constraints = originalConstraints;
 
-        rb.linearVelocity = Vector2.zero;
-        rb.angularVelocity = 0f;
+        moveInput = Vector2.zero;
+        horizontalMovement = 0f;
+        rawHorizontalInput = 0f;
 
         isControlBlocked = false;
     }
@@ -154,74 +154,6 @@ public class PlayerMovement : MonoBehaviour
 
         rb.linearVelocity = new Vector2(0f, rb.linearVelocity.y);
         rb.angularVelocity = 0f;
-    }
-
-    private bool hasTriggered = false;
-    private void OnTriggerEnter2D(Collider2D collision)
-    {
-        if (hasTriggered) return;
-        DialogTrigger interactable = collision.GetComponent<DialogTrigger>();
-        if (interactable)
-        {
-            hasTriggered = true;
-            flowchart.ExecuteBlock(interactable.blockName);
-            Collider2D triggerCollider = collision.GetComponent<Collider2D>();
-            if (triggerCollider != null)
-            {
-                triggerCollider.enabled = false;
-            }
-        }
-    }
-    public void EnableMove()
-    {
-        canMove = true;
-    }
-
-    public void EnableJump()
-    {
-        canJump = true;
-    }
-
-    public void EnableDash()
-    {
-        canDash = true;
-    }
-
-    public void EnableWallGrab()
-    {
-        canGrabWall = true;
-    }
-
-    public void EnableAllControls()
-    {
-        canMove = true;
-        canJump = true;
-        canDash = true;
-        canGrabWall = true;
-    }
-
-    public void Tutorial_MoveDone()
-    {
-        flowchart.ExecuteBlock("JumpTutorial");
-    }
-
-    public void Tutorial_JumpDone()
-    {
-        flowchart.ExecuteBlock("DashTutorial");
-    }
-
-    public void Tutorial_DashDone()
-    {
-        flowchart.ExecuteBlock("WallGrabTutorial");
-    }
-
-    public void Tutorial_WallGrabDone()
-    {
-        flowchart.ExecuteBlock("Done");
-    }
-    private void OnTriggerExit2D(Collider2D collision)
-    {
-        currentInteractable = null;
     }
     private void Awake()
     {
@@ -305,8 +237,7 @@ public class PlayerMovement : MonoBehaviour
     {
         if (isControlBlocked)
         {
-            rb.linearVelocity = Vector2.zero;
-            rb.angularVelocity = 0f;
+            rb.linearVelocity = new Vector2(0f, rb.linearVelocity.y);
             return;
         }
         if (isDashing) { return; }
@@ -352,15 +283,29 @@ public class PlayerMovement : MonoBehaviour
 
             return;
         }
-        // Звичайний рух
         rb.linearVelocity = new Vector2(horizontalMovement * moveSpeed, rb.linearVelocity.y);
         StepUp();
     }
+
+    #region Tutorial API (Fungus)
+    public void EnableJump()
+    {
+        canJump = true;
+    }
+    public void EnableDash()
+    {
+        canDash = true;
+    }
+    public void EnableWallGrab()
+    {
+        canGrabWall = true;
+    }
+    #endregion
+
     #region Movement
     private float rawHorizontalInput;
     public void Move(InputAction.CallbackContext context)
     {
-        if (!canMove) return;
         if (isControlBlocked) return;
         Vector2 rawMoveInput = context.ReadValue<Vector2>();
         rawHorizontalInput = rawMoveInput.x;
