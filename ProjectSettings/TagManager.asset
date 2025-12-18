@@ -42,6 +42,9 @@ TagManager:
   - name: Default
     uniqueID: 0
     locked: 0
+  - name: Sky
+    uniqueID: 4229650075
+    locked: 0
   - name: BehindDecor
     uniqueID: 1888349129
     locked: 0
