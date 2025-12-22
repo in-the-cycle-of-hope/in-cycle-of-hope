@@ -5,7 +5,6 @@ public class SkyTimeController : MonoBehaviour
 {
     [Header("Renderers")]
     public SpriteRenderer spriteRenderer;
-    public Tilemap tilemap;
 
     [Header("Time settings")]
     public float cycleDuration = 300f;
@@ -55,8 +54,5 @@ public class SkyTimeController : MonoBehaviour
     {
         if (spriteRenderer != null)
             spriteRenderer.color = c;
-
-        if (tilemap != null)
-            tilemap.color = c;
     }
 }

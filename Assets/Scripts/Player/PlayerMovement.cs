@@ -59,6 +59,8 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private float idleStaminaDrain = 5f;
     [SerializeField] private float staminaRegenRate = 30f;
 
+    [SerializeField] private Vector3 staminaLabelOffset = new Vector3(0f, 1.5f, 0f);
+
     private float currentStamina;
     private bool isOutOfStamina => currentStamina <= 0f;
 
@@ -121,10 +123,10 @@ public class PlayerMovement : MonoBehaviour
     private float coyoteTime = 0.15f;
     private float coyoteTimer = 0f;
 
-    [Header("Tutorial Abilities")]
-    public bool canJump = false;
-    public bool canDash = false;
-    public bool canGrabWall = false;
+    //[Header("Tutorial Abilities")]
+    //public bool canJump = false;
+    //public bool canDash = false;
+    //public bool canGrabWall = false;
     #endregion
     private RigidbodyConstraints2D originalConstraints;
     public void BlockControl()
@@ -287,20 +289,20 @@ public class PlayerMovement : MonoBehaviour
         StepUp();
     }
 
-    #region Tutorial API (Fungus)
-    public void EnableJump()
-    {
-        canJump = true;
-    }
-    public void EnableDash()
-    {
-        canDash = true;
-    }
-    public void EnableWallGrab()
-    {
-        canGrabWall = true;
-    }
-    #endregion
+    //#region Tutorial API (Fungus)
+    //public void EnableJump()
+    //{
+    //    canJump = true;
+    //}
+    //public void EnableDash()
+    //{
+    //    canDash = true;
+    //}
+    //public void EnableWallGrab()
+    //{
+    //    canGrabWall = true;
+    //}
+    //#endregion
 
     #region Movement
     private float rawHorizontalInput;
@@ -352,7 +354,7 @@ public class PlayerMovement : MonoBehaviour
     }
     public void Jump(InputAction.CallbackContext context)
     {
-        if (!canJump) return;
+        //if (!canJump) return;
         if (context.started)
         {
             jumpBufferTimer = jumpBufferTime;
@@ -389,7 +391,7 @@ public class PlayerMovement : MonoBehaviour
     #region Climb
     public void Grab(InputAction.CallbackContext context)
     {
-        if (!canGrabWall) return;
+        //if (!canGrabWall) return;
         if (context.started)
         {
             isGrabbingWall = true;
@@ -466,10 +468,6 @@ public class PlayerMovement : MonoBehaviour
             currentStamina += staminaRegenRate * Time.deltaTime;
             currentStamina = Mathf.Clamp(currentStamina, 0f, maxStamina);
         }
-    }
-    void OnGUI()
-    {
-        GUI.Label(new Rect(10, 10, 200, 20), $"Stamina: {Mathf.FloorToInt(currentStamina)}");
     }
     private bool isWallGrabbingTemporarilyDisabled = false;
     private void DoWallJump()
@@ -586,14 +584,47 @@ public class PlayerMovement : MonoBehaviour
 
         isClimbingLedge = false;
     }
+    void OnGUI()
+    {
+        // Показуємо ТІЛЬКИ коли натиснуто Shift
+        if (!Input.GetKey(KeyCode.LeftShift) && !Input.GetKey(KeyCode.RightShift))
+            return;
 
+        Camera cam = Camera.main;
+        if (cam == null) return;
+
+        // Позиція над гравцем у world space
+        Vector3 worldPos = transform.position + staminaLabelOffset;
+
+        // Переводимо у screen space
+        Vector3 screenPos = cam.WorldToScreenPoint(worldPos);
+
+        // Якщо гравець за камерою — не малюємо
+        if (screenPos.z < 0) return;
+
+        // Інверсія Y для GUI
+        float guiY = Screen.height - screenPos.y;
+
+        string staminaText = $"{Mathf.FloorToInt(currentStamina)}";
+
+        Vector2 size = GUI.skin.label.CalcSize(new GUIContent(staminaText));
+
+        Rect rect = new Rect(
+            screenPos.x - size.x / 2f,
+            guiY - size.y,
+            size.x,
+            size.y
+        );
+
+        GUI.Label(rect, staminaText);
+    }
 
     #endregion
 
     #region Dashing
     public void Dash(InputAction.CallbackContext context)
     {
-        if (!canDash) return;
+        //if (!canDash) return;
         if (context.started)
         {
             dashBufferTimer = dashBufferTime;

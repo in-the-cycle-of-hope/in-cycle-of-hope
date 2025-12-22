@@ -45,7 +45,13 @@ TagManager:
   - name: Sky
     uniqueID: 4229650075
     locked: 0
-  - name: BehindDecor
+  - name: Sun
+    uniqueID: 1371842561
+    locked: 0
+  - name: BehindDecor2
+    uniqueID: 1814725321
+    locked: 0
+  - name: BehindDecor1
     uniqueID: 1888349129
     locked: 0
   - name: Platforms
