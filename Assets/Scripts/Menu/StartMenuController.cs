@@ -1,16 +1,36 @@
-using UnityEngine;
+﻿using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
 
 public class StartMenuController : MonoBehaviour
 {
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
+    [SerializeField] GameObject firstSelectedButton;
+
+    void Start()
+    {
+        SelectFirstButton();
+    }
+
+    void OnEnable()
+    {
+        SelectFirstButton();
+    }
+
+    void SelectFirstButton()
+    {
+        if (EventSystem.current == null) return;
+
+        EventSystem.current.SetSelectedGameObject(null);
+        EventSystem.current.SetSelectedGameObject(firstSelectedButton);
+    }
+
     public void OnStartClick()
     {
         SceneManager.LoadScene("SampleScene");
     }
+
     public void OnExitClick()
     {
-        UnityEditor.EditorApplication.isPlaying = false;
         Application.Quit();
     }
 }
