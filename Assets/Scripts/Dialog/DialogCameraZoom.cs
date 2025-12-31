@@ -27,17 +27,34 @@ public class DialogCameraZoom : MonoBehaviour
 
     private IEnumerator DialogSequence(float targetSize)
     {
-        blackScreenObj1.SetActive(true);
-        blackScreen1.SetTrigger("BlackScreen1");
-        yield return new WaitForSeconds(0.3f);
+        // --- ЕТАП 1: ЗАТУХАННЯ (в чорний) ---
+        if (blackScreenObj1 != null)
+        {
+            blackScreenObj1.SetActive(true);
+            blackScreen1.Play("BlackScreenIn", -1, 0f);
+        }
 
+        yield return new WaitForSecondsRealtime(1f);
+
+        // --- ЕТАП 2: ЗМІНА КАМЕРИ ---
         cam.Lens.OrthographicSize = targetSize;
 
-        blackScreenObj2.SetActive(true);
-        blackScreen2.SetTrigger("BlackScreen2");
-        yield return new WaitForSeconds(0.3f);
+        // Маленька пауза, щоб камера "осіла"
+        yield return new WaitForSecondsRealtime(0.15f);
 
-        blackScreenObj1.SetActive(false);
-        blackScreenObj2.SetActive(false);
+        if (blackScreenObj1 != null)
+            blackScreenObj1.SetActive(false);
+
+        // --- ЕТАП 3: ПРОЯСНЕННЯ (з чорного) ---
+        if (blackScreenObj2 != null)
+        {
+            blackScreenObj2.SetActive(true);
+            blackScreen2.Play("BlackScreenOut", -1, 0f);
+        }
+
+        yield return new WaitForSecondsRealtime(1f);
+
+        if (blackScreenObj2 != null)
+            blackScreenObj2.SetActive(false);
     }
 }

@@ -8,6 +8,16 @@ public class DeathZone : MonoBehaviour
     {
         if (collision.gameObject.CompareTag("Player"))
         {
+            // 1. Отримуємо Rigidbody2D гравця
+            Rigidbody2D rb = collision.gameObject.GetComponent<Rigidbody2D>();
+            if (rb != null)
+            {
+                // ПРАВИЛЬНА НАЗВА: RigidbodyType2D
+                rb.bodyType = RigidbodyType2D.Static;
+            }
+
+            if (AudioManager.Instance) AudioManager.Instance.PlaySFX(AudioManager.Instance.death);
+
             PlayerMovement playerRespawn = collision.gameObject.GetComponent<PlayerMovement>();
             if (playerRespawn != null)
             {

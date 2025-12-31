@@ -15,7 +15,7 @@ public class SkyTimeController : MonoBehaviour
     public Color dayColor = Color.white;
     public Color sunsetColor = new Color(0.8f, 0.45f, 0.35f);
 
-    float timer;
+    public float timer;
 
     void Update()
     {

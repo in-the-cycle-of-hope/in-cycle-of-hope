@@ -168,21 +168,52 @@ public class PlayerMovement : MonoBehaviour
 
     public IEnumerator FadeRespawnTo(Vector3 newPosition)
     {
-        // Анімація смерті
         playerInput.enabled = false;
-        blackScreen.SetActive(true);
-        fadeAnimator.SetTrigger("BlackScreen");
-        yield return new WaitForSeconds(fadeDelay);
+
+        // --- ЕТАП 1: ЗАТУХАННЯ ---
+        if (blackScreen != null)
+        {
+            blackScreen.SetActive(true);
+            fadeAnimator.Play("BlackScreenIn", -1, 0f);
+        }
+
+        yield return new WaitForSecondsRealtime(1.0f);
+
+        // --- ЕТАП 2: ТЕЛЕПОРТАЦІЯ ТА ВІДНОВЛЕННЯ ФІЗИКИ ---
+        // Спочатку міняємо позицію
         transform.position = newPosition;
-        blackScreen.SetActive(false);
-        blackScreen2.SetActive(true);
-        fadeAnimator2.SetTrigger("BlackScreen2");
-        yield return new WaitForSeconds(fadeDelay);
-        blackScreen2.SetActive(false);
+
+        Rigidbody2D rb = GetComponent<Rigidbody2D>();
+        if (rb != null)
+        {
+            // Повертаємо рухливість ТІЛЬКИ після переміщення
+            rb.bodyType = RigidbodyType2D.Dynamic;
+            rb.linearVelocity = Vector2.zero; // або rb.velocity для старих версій
+        }
+
+        yield return new WaitForSecondsRealtime(0.2f);
+
+        if (blackScreen != null) blackScreen.SetActive(false);
+
+        // --- ЕТАП 3: ПРОЯСНЕННЯ ---
+        if (blackScreen2 != null)
+        {
+            blackScreen2.SetActive(true);
+            fadeAnimator2.Play("BlackScreenOut", -1, 0f);
+        }
+
+        yield return new WaitForSecondsRealtime(1.0f);
+
+        if (blackScreen2 != null) blackScreen2.SetActive(false);
+
         playerInput.enabled = true;
     }
     private void Start()
     {
+        if (SaveSystem.CanContinue())
+        {
+            transform.position = SaveSystem.LoadPosition();
+        }
         remainingDashes = maxDashes;
         defaultGravity = rb.gravityScale;
         currentStamina = maxStamina;
@@ -586,6 +617,9 @@ public class PlayerMovement : MonoBehaviour
     }
     void OnGUI()
     {
+        if (isControlBlocked) return;
+        if (Time.timeScale == 0) return;
+
         // Показуємо ТІЛЬКИ коли натиснуто Shift
         if (!Input.GetKey(KeyCode.LeftShift) && !Input.GetKey(KeyCode.RightShift))
             return;
@@ -606,7 +640,6 @@ public class PlayerMovement : MonoBehaviour
         float guiY = Screen.height - screenPos.y;
 
         string staminaText = $"{Mathf.FloorToInt(currentStamina)}";
-
         Vector2 size = GUI.skin.label.CalcSize(new GUIContent(staminaText));
 
         Rect rect = new Rect(
@@ -616,7 +649,22 @@ public class PlayerMovement : MonoBehaviour
             size.y
         );
 
+        // Зберігаємо попередній колір GUI
+        Color prevColor = GUI.color;
+
+        // 🔲 ЧОРНЕ ОБВЕДЕННЯ (outline)
+        GUI.color = Color.black;
+        GUI.Label(new Rect(rect.x - 1, rect.y, rect.width, rect.height), staminaText);
+        GUI.Label(new Rect(rect.x + 1, rect.y, rect.width, rect.height), staminaText);
+        GUI.Label(new Rect(rect.x, rect.y - 1, rect.width, rect.height), staminaText);
+        GUI.Label(new Rect(rect.x, rect.y + 1, rect.width, rect.height), staminaText);
+
+        // ✨ ОСНОВНИЙ ТЕКСТ
+        GUI.color = Color.white;
         GUI.Label(rect, staminaText);
+
+        // Повертаємо колір назад
+        GUI.color = prevColor;
     }
 
     #endregion
