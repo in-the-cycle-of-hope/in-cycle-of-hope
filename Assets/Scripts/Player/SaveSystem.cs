@@ -23,7 +23,20 @@ public static class SaveSystem
     {
         return GetCheckpointIndex() > 0;
     }
+    public static void SaveAbilities(bool jump, bool dash, bool wall)
+    {
+        PlayerPrefs.SetInt("CanJump", jump ? 1 : 0);
+        PlayerPrefs.SetInt("CanDash", dash ? 1 : 0);
+        PlayerPrefs.SetInt("CanWallGrab", wall ? 1 : 0);
+        PlayerPrefs.Save();
+    }
 
+    public static void LoadAbilities(PlayerMovement player)
+    {
+        player.canJump = PlayerPrefs.GetInt("CanJump", 0) == 1;
+        player.canDash = PlayerPrefs.GetInt("CanDash", 0) == 1;
+        player.canGrabWall = PlayerPrefs.GetInt("CanWallGrab", 0) == 1;
+    }
     public static Vector3 LoadPosition()
     {
         return new Vector3(

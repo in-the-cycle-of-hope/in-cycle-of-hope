@@ -11,16 +11,21 @@ public class MovingPlatform : MonoBehaviour
     public CinemachineCamera requiredCamera;
 
     private Vector3 nextPosition;
+    private Vector3 startPosition;
+
+    private void Awake()
+    {
+        startPosition = pointA.position;
+    }
 
     private void Start()
     {
-        nextPosition = pointA.position;
+        ResetPlatform();
     }
 
     private void Update()
     {
-        if (!CameraManager.IsActiveCamera(requiredCamera))
-            return;
+        if (!CameraManager.IsActiveCamera(requiredCamera)) return;
 
         transform.position = Vector3.MoveTowards(
             transform.position,
@@ -28,7 +33,7 @@ public class MovingPlatform : MonoBehaviour
             moveSpeed * Time.deltaTime
         );
 
-        if (transform.position == nextPosition)
+        if (Vector3.Distance(transform.position, nextPosition) < 0.01f)
         {
             nextPosition = (nextPosition == pointA.position)
                 ? pointB.position
@@ -36,11 +41,17 @@ public class MovingPlatform : MonoBehaviour
         }
     }
 
+    public void ResetPlatform()
+    {
+        transform.position = startPosition;
+        nextPosition = pointB.position;
+    }
+
     private void OnCollisionEnter2D(Collision2D collision)
     {
         if (collision.gameObject.CompareTag("Player"))
         {
-            collision.transform.parent = transform;
+            collision.transform.SetParent(transform);
         }
     }
 
@@ -48,7 +59,7 @@ public class MovingPlatform : MonoBehaviour
     {
         if (collision.gameObject.CompareTag("Player"))
         {
-            collision.transform.parent = null;
+            collision.transform.SetParent(null);
         }
     }
 }

@@ -288,8 +288,11 @@ MonoBehaviour:
   sfxSource: {fileID: 64107447}
   menuMove: {fileID: 8300000, guid: e55edb6146e78804c8f11b190e97e2eb, type: 3}
   menuConfirm: {fileID: 8300000, guid: 617f97d73b5124e4fb2ae44c06a0afbb, type: 3}
-  pauseOpen: {fileID: 8300000, guid: e55edb6146e78804c8f11b190e97e2eb, type: 3}
-  pauseClose: {fileID: 8300000, guid: e55edb6146e78804c8f11b190e97e2eb, type: 3}
+  move: {fileID: 0}
+  jump: {fileID: 0}
+  dash: {fileID: 0}
+  climb: {fileID: 0}
+  death: {fileID: 0}
 --- !u!82 &64107449
 AudioSource:
   m_ObjectHideFlags: 0
@@ -1694,6 +1697,7 @@ GameObject:
   - component: {fileID: 1044186335}
   - component: {fileID: 1044186334}
   - component: {fileID: 1044186337}
+  - component: {fileID: 1044186338}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -1819,6 +1823,20 @@ MonoBehaviour:
     m_MipBias: 0
     m_VarianceClampScale: 0.9
     m_ContrastAdaptiveSharpening: 0
+--- !u!114 &1044186338
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1044186333}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 75b6a47de0acfca43b93c583fb325abf, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  mainMixer: {fileID: 24100000, guid: 90d9b5a518e56a946932408fd2995813, type: 2}
+  fungusMixer: {fileID: 24100000, guid: 5f171e3c1cd39ff488490da837375068, type: 2}
 --- !u!1 &1161840783
 GameObject:
   m_ObjectHideFlags: 0
@@ -3048,6 +3066,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   mainMixer: {fileID: 24100000, guid: 90d9b5a518e56a946932408fd2995813, type: 2}
+  fungusMixer: {fileID: 0}
   musicSlider: {fileID: 1740912341}
   sfxSlider: {fileID: 831822263}
 --- !u!224 &1606697405

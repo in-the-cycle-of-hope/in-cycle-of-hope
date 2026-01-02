@@ -17,6 +17,7 @@ public class AudioManager : MonoBehaviour
     public AudioClip dash;
     public AudioClip climb;
     public AudioClip death;
+    public AudioClip crack;
 
     void Awake()
     {

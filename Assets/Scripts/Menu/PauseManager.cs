@@ -189,13 +189,6 @@ public class PauseManager : MonoBehaviour
         }
     }
 
-    public void Restart()
-    {
-        PlayConfirmSound();
-        Time.timeScale = 1f;
-        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
-    }
-
     public void Home()
     {
         PlayConfirm();

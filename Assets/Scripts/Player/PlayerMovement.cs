@@ -30,6 +30,12 @@ public class PlayerMovement : MonoBehaviour
     private WaitForSeconds _dashCooldownWait;
     private WaitForSeconds _wallJumpDurationWait;
 
+    [Header("Animation")]
+    [SerializeField] private Animator animator;
+    [SerializeField] private float idleLongDelay = 3f;
+    private float idleTimer;
+    private bool idleLongPlayed;
+
     [Header("Movement")]
     public float moveSpeed = 5f;
     public float horizontalMovement;
@@ -123,30 +129,47 @@ public class PlayerMovement : MonoBehaviour
     private float coyoteTime = 0.15f;
     private float coyoteTimer = 0f;
 
-    //[Header("Tutorial Abilities")]
-    //public bool canJump = false;
-    //public bool canDash = false;
-    //public bool canGrabWall = false;
+    [Header("Tutorial Abilities")]
+    public bool canJump = false;
+    public bool canDash = false;
+    public bool canGrabWall = false;
+
     #endregion
     private RigidbodyConstraints2D originalConstraints;
     public void BlockControl()
     {
         isControlBlocked = true;
-        originalConstraints = rb.constraints;
-        rb.gravityScale = defaultGravity;
-        rb.constraints = RigidbodyConstraints2D.FreezeRotation;
+
+        // 🔒 Вимикаємо інпут
+        if (playerInput != null)
+            playerInput.enabled = false;
+
+        // 🛑 Повністю зупиняємо рух
+        rb.linearVelocity = Vector2.zero;
+        rb.angularVelocity = 0f;
+
+        // ❗ Фіксуємо фізику
+        rb.constraints = RigidbodyConstraints2D.FreezeRotation | RigidbodyConstraints2D.FreezePositionX;
+
+        // 🧍‍♀️ Гарантований Idle
+        animator.SetBool("isRunning", false);
+        animator.SetBool("isIdleLong", false);
     }
 
 
     public void UnblockControl()
     {
-        rb.constraints = originalConstraints;
+        isControlBlocked = false;
 
+        if (playerInput != null)
+            playerInput.enabled = true;
+
+        // 🔓 Повертаємо фізику
+        rb.constraints = RigidbodyConstraints2D.FreezeRotation;
+
+        // 🧹 Чистимо інпут
         moveInput = Vector2.zero;
         horizontalMovement = 0f;
-        rawHorizontalInput = 0f;
-
-        isControlBlocked = false;
     }
     public void ResetMovementState()
     {
@@ -159,6 +182,7 @@ public class PlayerMovement : MonoBehaviour
     }
     private void Awake()
     {
+        SaveSystem.LoadAbilities(this);
         playerInput = GetComponent<PlayerInput>();
     }
     public void RespawnNow()
@@ -207,18 +231,93 @@ public class PlayerMovement : MonoBehaviour
         if (blackScreen2 != null) blackScreen2.SetActive(false);
 
         playerInput.enabled = true;
+
+        MovingPlatform[] platforms = FindObjectsOfType<MovingPlatform>();
+        foreach (var platform in platforms)
+        {
+            platform.ResetPlatform();
+        }
     }
     private void Start()
     {
+        remainingDashes = maxDashes;
+        defaultGravity = rb.gravityScale;
+        currentStamina = maxStamina;
+
+        _dashCooldownWait = new WaitForSeconds(dashCooldown);
+        _wallJumpDurationWait = new WaitForSeconds(wallJumpDuration);
+
         if (SaveSystem.CanContinue())
         {
             transform.position = SaveSystem.LoadPosition();
         }
-        remainingDashes = maxDashes;
-        defaultGravity = rb.gravityScale;
-        currentStamina = maxStamina;
-        _dashCooldownWait = new WaitForSeconds(dashCooldown);
-        _wallJumpDurationWait = new WaitForSeconds(wallJumpDuration);
+    }
+    void UpdateAnimations()
+    {
+        // 🔒 Діалоги / катсцени
+        if (isControlBlocked)
+        {
+            animator.SetBool("isRunning", false);
+            animator.SetBool("isIdleLong", false);
+            animator.SetBool("isGrounded", isGrounded);
+            animator.SetFloat("yVelocity", rb.linearVelocity.y);
+
+            idleTimer = 0f;
+            idleLongPlayed = false;
+            return;
+        }
+
+        float speed = Mathf.Abs(rb.linearVelocity.x);
+        float yVel = rb.linearVelocity.y;
+
+        bool hasMoveInput = Mathf.Abs(moveInput.x) > 0.01f;
+
+        // ───── Jump / Fall ─────
+        animator.SetBool("isGrounded", isGrounded);
+        animator.SetFloat("yVelocity", yVel);
+
+        // ───── Run ─────
+        bool canRun =
+            isGrounded &&
+            !isDashing &&
+            !isWallGrabbingActive &&
+            !isWallJumping &&
+            !isClimbingLedge &&
+            (hasMoveInput || speed > 0.1f);
+
+        animator.SetBool("isRunning", canRun);
+
+        // ───── Idle / IdleLong ─────
+        bool canIdle =
+            isGrounded &&
+            !isDashing &&
+            !isWallGrabbingActive &&
+            !isWallJumping &&
+            !isClimbingLedge &&
+            !hasMoveInput &&
+            speed < 0.05f;
+
+        if (canIdle && !idleLongPlayed)
+        {
+            idleTimer += Time.deltaTime;
+
+            if (idleTimer >= idleLongDelay)
+            {
+                animator.SetBool("isIdleLong", true);
+                idleLongPlayed = true; // 🔑 КЛЮЧОВИЙ ФЛАГ
+            }
+        }
+        else
+        {
+            idleTimer = 0f;
+            animator.SetBool("isIdleLong", false);
+        }
+
+        // 🔄 Скидання — коли гравець зробив ДІЮ
+        if (!canIdle || !isGrounded)
+        {
+            idleLongPlayed = false;
+        }
     }
     void Update()
     {
@@ -265,6 +364,7 @@ public class PlayerMovement : MonoBehaviour
                 isWallJumping = false;
             }
         }
+        UpdateAnimations();
     }
     private void FixedUpdate()
     {
@@ -320,20 +420,23 @@ public class PlayerMovement : MonoBehaviour
         StepUp();
     }
 
-    //#region Tutorial API (Fungus)
-    //public void EnableJump()
-    //{
-    //    canJump = true;
-    //}
-    //public void EnableDash()
-    //{
-    //    canDash = true;
-    //}
-    //public void EnableWallGrab()
-    //{
-    //    canGrabWall = true;
-    //}
-    //#endregion
+    #region Tutorial API (Fungus)
+    public void EnableJump()
+    {
+        canJump = true;
+        SaveSystem.SaveAbilities(canJump, canDash, canGrabWall);
+    }
+    public void EnableDash()
+    {
+        canDash = true;
+        SaveSystem.SaveAbilities(canJump, canDash, canGrabWall);
+    }
+    public void EnableWallGrab()
+    {
+        canGrabWall = true;
+        SaveSystem.SaveAbilities(canJump, canDash, canGrabWall);
+    }
+    #endregion
 
     #region Movement
     private float rawHorizontalInput;
@@ -385,7 +488,7 @@ public class PlayerMovement : MonoBehaviour
     }
     public void Jump(InputAction.CallbackContext context)
     {
-        //if (!canJump) return;
+        if (!canJump) return;
         if (context.started)
         {
             jumpBufferTimer = jumpBufferTime;
@@ -422,7 +525,7 @@ public class PlayerMovement : MonoBehaviour
     #region Climb
     public void Grab(InputAction.CallbackContext context)
     {
-        //if (!canGrabWall) return;
+        if (!canGrabWall) return;
         if (context.started)
         {
             isGrabbingWall = true;
@@ -620,6 +723,13 @@ public class PlayerMovement : MonoBehaviour
         if (isControlBlocked) return;
         if (Time.timeScale == 0) return;
 
+        // ❗ НОВЕ: механіка має бути відкрита
+        if (!canGrabWall) return;
+
+        // ❗ НОВЕ: показуємо ТІЛЬКИ якщо біля стіни або хапаємося
+        if (!isWallDetected && !isWallGrabbingActive)
+            return;
+
         // Показуємо ТІЛЬКИ коли натиснуто Shift
         if (!Input.GetKey(KeyCode.LeftShift) && !Input.GetKey(KeyCode.RightShift))
             return;
@@ -627,16 +737,10 @@ public class PlayerMovement : MonoBehaviour
         Camera cam = Camera.main;
         if (cam == null) return;
 
-        // Позиція над гравцем у world space
         Vector3 worldPos = transform.position + staminaLabelOffset;
-
-        // Переводимо у screen space
         Vector3 screenPos = cam.WorldToScreenPoint(worldPos);
-
-        // Якщо гравець за камерою — не малюємо
         if (screenPos.z < 0) return;
 
-        // Інверсія Y для GUI
         float guiY = Screen.height - screenPos.y;
 
         string staminaText = $"{Mathf.FloorToInt(currentStamina)}";
@@ -649,30 +753,27 @@ public class PlayerMovement : MonoBehaviour
             size.y
         );
 
-        // Зберігаємо попередній колір GUI
         Color prevColor = GUI.color;
 
-        // 🔲 ЧОРНЕ ОБВЕДЕННЯ (outline)
         GUI.color = Color.black;
         GUI.Label(new Rect(rect.x - 1, rect.y, rect.width, rect.height), staminaText);
         GUI.Label(new Rect(rect.x + 1, rect.y, rect.width, rect.height), staminaText);
         GUI.Label(new Rect(rect.x, rect.y - 1, rect.width, rect.height), staminaText);
         GUI.Label(new Rect(rect.x, rect.y + 1, rect.width, rect.height), staminaText);
 
-        // ✨ ОСНОВНИЙ ТЕКСТ
         GUI.color = Color.white;
         GUI.Label(rect, staminaText);
 
-        // Повертаємо колір назад
         GUI.color = prevColor;
     }
+
 
     #endregion
 
     #region Dashing
     public void Dash(InputAction.CallbackContext context)
     {
-        //if (!canDash) return;
+        if (!canDash) return;
         if (context.started)
         {
             dashBufferTimer = dashBufferTime;
