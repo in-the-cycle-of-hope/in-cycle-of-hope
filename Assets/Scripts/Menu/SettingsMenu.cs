@@ -6,7 +6,7 @@ public class SettingsMenu : MonoBehaviour
 {
     [Header("Mixers")]
     [SerializeField] private AudioMixer mainMixer;
-    [SerializeField] private AudioMixer fungusMixer; // Посилання на другий мікшер
+    [SerializeField] private AudioMixer fungusMixer;
 
     [Header("Sliders")]
     [SerializeField] private Slider musicSlider;
@@ -36,11 +36,8 @@ public class SettingsMenu : MonoBehaviour
     {
         float dbValue = Mathf.Log10(Mathf.Max(value, 0.0001f)) * 20;
 
-        // 1. Оновлюємо основний мікшер
         mainMixer.SetFloat("SFXVol", dbValue);
 
-        // 2. Оновлюємо мікшер Fungus
-        // Переконайтеся, що назва "SFXVol" (або "MyExposedParam 1") збігається з Exposed Parameter у Fungus Mixer
         if (fungusMixer != null)
         {
             fungusMixer.SetFloat("SFXVol", dbValue);

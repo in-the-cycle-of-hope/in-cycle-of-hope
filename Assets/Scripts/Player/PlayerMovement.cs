@@ -1,11 +1,12 @@
-﻿using System.Collections;
+﻿using Fungus;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using TMPro;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.Playables;
-using Fungus;
 
 public class PlayerMovement : MonoBehaviour
 {
@@ -32,9 +33,19 @@ public class PlayerMovement : MonoBehaviour
 
     [Header("Animation")]
     [SerializeField] private Animator animator;
-    [SerializeField] private float idleLongDelay = 3f;
+    [SerializeField] private float idleLongDelay = 5f;
     private float idleTimer;
-    private bool idleLongPlayed;
+    [SerializeField] private float idlePhaseDelay = 5f;
+    [SerializeField] private float idleLong1Delay = 5f;
+    [SerializeField] private float idleLong2Delay = 5f;
+    private bool idleLong1Played;
+    private bool idleLong2Played;
+    public bool isDead;
+    private int deathLayerIndex;
+    private bool isRespawning;
+
+    [Header("Death")]
+    [SerializeField] private float deathAnimationDuration = 0.5f;
 
     [Header("Movement")]
     public float moveSpeed = 5f;
@@ -140,21 +151,15 @@ public class PlayerMovement : MonoBehaviour
     {
         isControlBlocked = true;
 
-        // 🔒 Вимикаємо інпут
         if (playerInput != null)
             playerInput.enabled = false;
 
-        // 🛑 Повністю зупиняємо рух
         rb.linearVelocity = Vector2.zero;
-        rb.angularVelocity = 0f;
-
-        // ❗ Фіксуємо фізику
         rb.constraints = RigidbodyConstraints2D.FreezeRotation | RigidbodyConstraints2D.FreezePositionX;
 
-        // 🧍‍♀️ Гарантований Idle
         animator.SetBool("isRunning", false);
-        animator.SetBool("isIdleLong", false);
     }
+
 
 
     public void UnblockControl()
@@ -180,10 +185,68 @@ public class PlayerMovement : MonoBehaviour
         rb.linearVelocity = new Vector2(0f, rb.linearVelocity.y);
         rb.angularVelocity = 0f;
     }
+    [Header("Dialogue Lock")]
+    public bool isInDialogue = false;
+    private bool waitForLandingToIdle = false;
+    private void ForceIdleAnimation()
+    {
+        if (idleForced) return; // ⛔ НЕ перезапускаємо кожен кадр
+
+        idleForced = true;
+
+        animator.SetBool("isRunning", false);
+        animator.SetBool("isDashing", false);
+        animator.SetBool("isWallGrabbing", false);
+
+        animator.SetBool("isGrounded", true);
+        animator.SetFloat("yVelocity", 0f);
+
+        // ✅ Мʼякий перехід, НЕ ресет кожен кадр
+        animator.CrossFade("Idle", 0.1f);
+
+        idleTimer = 0f;
+        idleLong1Played = false;
+        idleLong2Played = false;
+    }
+
+
+    public void EnterDialogue()
+    {
+        isInDialogue = true;
+        BlockControl();
+
+        isDashing = false;
+        isWallGrabbingActive = false;
+        isGrabbingWall = false;
+        isWallJumping = false;
+        isClimbingLedge = false;
+
+        rb.linearVelocity = new Vector2(0f, rb.linearVelocity.y);
+        rb.gravityScale = defaultGravity;
+        rb.constraints = RigidbodyConstraints2D.FreezeRotation;
+
+        // якщо вже на землі — одразу Idle
+        if (isGrounded) ForceIdleAnimation();
+    }
+    public void ExitDialogue()
+    {
+        isInDialogue = false;
+        idleForced = false; // 🔁 дозволяємо анімаціям знову працювати
+        UnblockControl();
+    }
+
     private void Awake()
     {
         SaveSystem.LoadAbilities(this);
         playerInput = GetComponent<PlayerInput>();
+
+        deathLayerIndex = animator.GetLayerIndex("DeathLayer");
+
+        // Якщо скрипт не знайшов шар за назвою, він примусово візьме індекс 1
+        if (deathLayerIndex == -1)
+        {
+            deathLayerIndex = 1;
+        }
     }
     public void RespawnNow()
     {
@@ -192,34 +255,38 @@ public class PlayerMovement : MonoBehaviour
 
     public IEnumerator FadeRespawnTo(Vector3 newPosition)
     {
-        playerInput.enabled = false;
+        // ВИМИКАЄМО ІНПУТ ОДРАЗУ
+        if (playerInput != null) playerInput.enabled = false;
 
-        // --- ЕТАП 1: ЗАТУХАННЯ ---
+        // --- ЕТАП 1: ЗАТУХАННЯ (ЧОРНИЙ ЕКРАН) ---
         if (blackScreen != null)
         {
             blackScreen.SetActive(true);
+            // Переконайтеся, що назва анімації "BlackScreenIn" вірна
             fadeAnimator.Play("BlackScreenIn", -1, 0f);
         }
 
+        // Чекаємо, поки екран повністю стане чорним
         yield return new WaitForSecondsRealtime(1.0f);
 
-        // --- ЕТАП 2: ТЕЛЕПОРТАЦІЯ ТА ВІДНОВЛЕННЯ ФІЗИКИ ---
-        // Спочатку міняємо позицію
+        // --- ЕТАП 2: ТЕЛЕПОРТАЦІЯ (ПОКИ ВСЕ ЧОРНЕ) ---
         transform.position = newPosition;
 
-        Rigidbody2D rb = GetComponent<Rigidbody2D>();
-        if (rb != null)
-        {
-            // Повертаємо рухливість ТІЛЬКИ після переміщення
-            rb.bodyType = RigidbodyType2D.Dynamic;
-            rb.linearVelocity = Vector2.zero; // або rb.velocity для старих версій
-        }
+        // Скидаємо анімації
+        if (deathLayerIndex == -1) deathLayerIndex = 1;
+        animator.SetLayerWeight(deathLayerIndex, 0f);
+        animator.Rebind();
+        animator.Update(0f);
+        animator.Play("Idle", 0, 0f);
 
-        yield return new WaitForSecondsRealtime(0.2f);
+        rb.bodyType = RigidbodyType2D.Dynamic;
+        rb.linearVelocity = Vector2.zero;
 
-        if (blackScreen != null) blackScreen.SetActive(false);
+        yield return new WaitForSecondsRealtime(0.5f);
 
         // --- ЕТАП 3: ПРОЯСНЕННЯ ---
+        if (blackScreen != null) blackScreen.SetActive(false);
+
         if (blackScreen2 != null)
         {
             blackScreen2.SetActive(true);
@@ -230,13 +297,10 @@ public class PlayerMovement : MonoBehaviour
 
         if (blackScreen2 != null) blackScreen2.SetActive(false);
 
-        playerInput.enabled = true;
-
-        MovingPlatform[] platforms = FindObjectsOfType<MovingPlatform>();
-        foreach (var platform in platforms)
-        {
-            platform.ResetPlatform();
-        }
+        // ВІДНОВЛЕННЯ КОНТРОЛЮ
+        isDead = false;
+        isRespawning = false;
+        UnblockControl();
     }
     private void Start()
     {
@@ -254,17 +318,18 @@ public class PlayerMovement : MonoBehaviour
     }
     void UpdateAnimations()
     {
-        // 🔒 Діалоги / катсцени
-        if (isControlBlocked)
-        {
-            animator.SetBool("isRunning", false);
-            animator.SetBool("isIdleLong", false);
-            animator.SetBool("isGrounded", isGrounded);
-            animator.SetFloat("yVelocity", rb.linearVelocity.y);
+        if (isDead || isRespawning) return;
 
-            idleTimer = 0f;
-            idleLongPlayed = false;
-            return;
+        // 1. ДЕШ МАЄ НАЙВИЩИЙ ПРІОРИТЕТ
+        animator.SetBool("isDashing", isDashing);
+
+        if (isDashing)
+        {
+            // Коли ми в деші, ігноруємо все інше
+            animator.SetBool("isRunning", false);
+            animator.SetBool("isWallGrabbing", false);
+            animator.SetFloat("yVelocity", 0f);
+            return; // Виходимо з методу, щоб інша логіка не перезаписувала параметри
         }
 
         float speed = Mathf.Abs(rb.linearVelocity.x);
@@ -272,11 +337,10 @@ public class PlayerMovement : MonoBehaviour
 
         bool hasMoveInput = Mathf.Abs(moveInput.x) > 0.01f;
 
-        // ───── Jump / Fall ─────
+        // базові параметри (як у тебе)
         animator.SetBool("isGrounded", isGrounded);
         animator.SetFloat("yVelocity", yVel);
 
-        // ───── Run ─────
         bool canRun =
             isGrounded &&
             !isDashing &&
@@ -287,7 +351,8 @@ public class PlayerMovement : MonoBehaviour
 
         animator.SetBool("isRunning", canRun);
 
-        // ───── Idle / IdleLong ─────
+        // ✅ Супер-важливо: canIdle має стати false при будь-якій “дії”
+        // (включно з маленьким дрейфом по X або рухом по Y)
         bool canIdle =
             isGrounded &&
             !isDashing &&
@@ -297,33 +362,112 @@ public class PlayerMovement : MonoBehaviour
             !hasMoveInput &&
             speed < 0.05f;
 
-        if (canIdle && !idleLongPlayed)
+        if (canIdle)
         {
             idleTimer += Time.deltaTime;
 
-            if (idleTimer >= idleLongDelay)
+            // 1-а довга анімація — рівно 1 раз за стояння
+            if (!idleLong1Played && idleTimer >= idleLong1Delay)
             {
-                animator.SetBool("isIdleLong", true);
-                idleLongPlayed = true; // 🔑 КЛЮЧОВИЙ ФЛАГ
+                animator.SetTrigger("IdleLong1");
+                idleLong1Played = true;
+            }
+
+            // 2-а довга анімація — рівно 1 раз за стояння
+            if (!idleLong2Played && idleTimer >= idleLong2Delay)
+            {
+                animator.SetTrigger("IdleLong2");
+                idleLong2Played = true;
             }
         }
         else
         {
+            // ✅ Скидання циклу ТІЛЬКИ коли гравець зробив дію
             idleTimer = 0f;
-            animator.SetBool("isIdleLong", false);
+            idleLong1Played = false;
+            idleLong2Played = false;
         }
+        AnimatorStateInfo state = animator.GetCurrentAnimatorStateInfo(0);
 
-        // 🔄 Скидання — коли гравець зробив ДІЮ
-        if (!canIdle || !isGrounded)
+        if (idleLong2Played && state.IsName("Idle"))
         {
-            idleLongPlayed = false;
+            idleTimer = 0f;
+            idleLong1Played = false;
+            idleLong2Played = false;
+        }
+        // 💨 Dash
+        animator.SetBool("isDashing", isDashing);
+
+        animator.SetBool("isWallGrabbing", isWallGrabbingActive);
+        animator.SetFloat("wallClimbSpeed", Mathf.Abs(moveInput.y));
+
+        // НОВЕ: Якщо ми на стіні, примусово вимикаємо біг і стрибки в аніматорі
+        if (isWallGrabbingActive)
+        {
+            // Це змусить аніматор вийти з будь-якого стану, 
+            // що базується на швидкості падіння або відсутності землі
+            animator.SetFloat("yVelocity", 0f);
+            animator.SetBool("isRunning", false);
         }
     }
+    public void Die(Vector3 respawnPosition)
+    {
+        if (isDead || isRespawning) return;
+
+        isDead = true;
+        isRespawning = true;
+        respawnPoint = respawnPosition;
+
+        BlockControl();
+
+        // 2. Вмикаємо анімацію смерті
+        if (deathLayerIndex == -1) deathLayerIndex = 1;
+        animator.SetLayerWeight(deathLayerIndex, 1f);
+        animator.Play("Death", deathLayerIndex, 0f);
+
+        // 3. Запускаємо послідовність
+        StartCoroutine(DeathSequence());
+    }
+
+    private IEnumerator DeathSequence()
+    {
+        // 1. Даємо анімації смерті програтися
+        yield return new WaitForSecondsRealtime(deathAnimationDuration);
+
+        // 2. Чорний екран + телепорт
+        yield return StartCoroutine(FadeRespawnTo(respawnPoint));
+
+        // 3. 🔁 РЕСЕТ СВІТУ (платформи, пастки, тощо)
+        RespawnManager.ResetWorld();
+
+        // 4. Повертаємо контроль
+        isDead = false;
+        isRespawning = false;
+        UnblockControl();
+    }
+    private bool idleForced = false;
+
     void Update()
     {
         if (isControlBlocked)
         {
             moveInput = Vector2.zero;
+            GroundCheck();
+
+            if (isInDialogue)
+            {
+                if (isGrounded)
+                {
+                    ForceIdleAnimation(); // тепер викликається безпечно
+                }
+                else
+                {
+
+                    animator.SetBool("isGrounded", false);
+                    animator.SetFloat("yVelocity", rb.linearVelocity.y);
+                }
+            }
+
             return;
         }
         GroundCheck();
@@ -365,6 +509,7 @@ public class PlayerMovement : MonoBehaviour
             }
         }
         UpdateAnimations();
+        UpdateStaminaUI();
     }
     private void FixedUpdate()
     {
@@ -718,53 +863,37 @@ public class PlayerMovement : MonoBehaviour
 
         isClimbingLedge = false;
     }
-    void OnGUI()
+    [Header("UI Settings")]
+    public TextMeshProUGUI staminaTextDisplay;
+    void UpdateStaminaUI()
     {
-        if (isControlBlocked) return;
-        if (Time.timeScale == 0) return;
+        if (staminaTextDisplay == null) return;
 
-        // ❗ НОВЕ: механіка має бути відкрита
-        if (!canGrabWall) return;
+        // 1. Оновлюємо текст
+        staminaTextDisplay.text = Mathf.FloorToInt(currentStamina).ToString();
 
-        // ❗ НОВЕ: показуємо ТІЛЬКИ якщо біля стіни або хапаємося
-        if (!isWallDetected && !isWallGrabbingActive)
-            return;
+        // 2. Умови показу (твоя логіка)
+        bool isShiftPressed = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+        bool shouldShow = canGrabWall &&
+                          (isWallDetected || isWallGrabbingActive) &&
+                          isShiftPressed &&
+                          !isDead;
 
-        // Показуємо ТІЛЬКИ коли натиснуто Shift
-        if (!Input.GetKey(KeyCode.LeftShift) && !Input.GetKey(KeyCode.RightShift))
-            return;
+        staminaTextDisplay.gameObject.SetActive(shouldShow);
 
-        Camera cam = Camera.main;
-        if (cam == null) return;
+        if (shouldShow)
+        {
+            // 3. Позиціонування Canvas (якщо він дочірній)
+            // Ми примусово ставимо scale.x = 1 (або -1), щоб текст завжди був читабельним
+            // навіть якщо гравець розвернувся (flipped)
+            float parentXScale = transform.localScale.x;
+            Vector3 newScale = staminaTextDisplay.transform.parent.localScale;
+            newScale.x = Mathf.Abs(newScale.x) * (parentXScale > 0 ? 1 : -1);
+            staminaTextDisplay.transform.parent.localScale = newScale;
 
-        Vector3 worldPos = transform.position + staminaLabelOffset;
-        Vector3 screenPos = cam.WorldToScreenPoint(worldPos);
-        if (screenPos.z < 0) return;
-
-        float guiY = Screen.height - screenPos.y;
-
-        string staminaText = $"{Mathf.FloorToInt(currentStamina)}";
-        Vector2 size = GUI.skin.label.CalcSize(new GUIContent(staminaText));
-
-        Rect rect = new Rect(
-            screenPos.x - size.x / 2f,
-            guiY - size.y,
-            size.x,
-            size.y
-        );
-
-        Color prevColor = GUI.color;
-
-        GUI.color = Color.black;
-        GUI.Label(new Rect(rect.x - 1, rect.y, rect.width, rect.height), staminaText);
-        GUI.Label(new Rect(rect.x + 1, rect.y, rect.width, rect.height), staminaText);
-        GUI.Label(new Rect(rect.x, rect.y - 1, rect.width, rect.height), staminaText);
-        GUI.Label(new Rect(rect.x, rect.y + 1, rect.width, rect.height), staminaText);
-
-        GUI.color = Color.white;
-        GUI.Label(rect, staminaText);
-
-        GUI.color = prevColor;
+            // Встановлюємо офсет
+            staminaTextDisplay.transform.parent.localPosition = staminaLabelOffset;
+        }
     }
 
 

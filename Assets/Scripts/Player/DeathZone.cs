@@ -6,23 +6,14 @@ public class DeathZone : MonoBehaviour
 
     private void OnCollisionEnter2D(Collision2D collision)
     {
-        if (collision.gameObject.CompareTag("Player"))
+        Debug.Log("Зіткнення з: " + collision.gameObject.name); // Це з'явиться в консолі?
+        if (!collision.gameObject.CompareTag("Player")) return;
+
+        PlayerMovement player = collision.gameObject.GetComponent<PlayerMovement>();
+        if (player != null)
         {
-            // 1. Отримуємо Rigidbody2D гравця
-            Rigidbody2D rb = collision.gameObject.GetComponent<Rigidbody2D>();
-            if (rb != null)
-            {
-                // ПРАВИЛЬНА НАЗВА: RigidbodyType2D
-                rb.bodyType = RigidbodyType2D.Static;
-            }
-
-            if (AudioManager.Instance) AudioManager.Instance.PlaySFX(AudioManager.Instance.death);
-
-            PlayerMovement playerRespawn = collision.gameObject.GetComponent<PlayerMovement>();
-            if (playerRespawn != null)
-            {
-                StartCoroutine(playerRespawn.FadeRespawnTo(assignedCheckpoint.position));
-            }
+            Debug.Log("Викликаю Die()");
+            player.Die(assignedCheckpoint.position);
         }
     }
 }

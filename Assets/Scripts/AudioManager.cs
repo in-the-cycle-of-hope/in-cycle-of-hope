@@ -6,17 +6,15 @@ public class AudioManager : MonoBehaviour
 
     [Header("Music")]
     public AudioClip menuMusic;
+    public AudioClip subtitlesMusic;
+
+    [Header("Sources")]
     public AudioSource musicSource;
     public AudioSource sfxSource;
 
     [Header("UI Sounds")]
     public AudioClip menuMove;
     public AudioClip menuConfirm;
-    public AudioClip move;
-    public AudioClip jump;
-    public AudioClip dash;
-    public AudioClip climb;
-    public AudioClip death;
     public AudioClip crack;
 
     void Awake()
@@ -32,13 +30,14 @@ public class AudioManager : MonoBehaviour
 
     public void PlayMusic(AudioClip clip)
     {
-        if (musicSource.clip == clip) return;
+        if (clip == null || musicSource.clip == clip) return;
         musicSource.clip = clip;
         musicSource.Play();
     }
 
     public void PlaySFX(AudioClip clip)
     {
+        if (clip == null) return;
         sfxSource.PlayOneShot(clip);
     }
 }

@@ -1,4 +1,4 @@
-using Unity.Cinemachine;
+﻿using Unity.Cinemachine;
 using UnityEngine;
 
 public class MovingPlatform : MonoBehaviour
@@ -16,6 +16,12 @@ public class MovingPlatform : MonoBehaviour
     private void Awake()
     {
         startPosition = pointA.position;
+        RespawnManager.RegisterPlatform(this); // 👈 реєстрація
+    }
+
+    private void OnDestroy()
+    {
+        RespawnManager.UnregisterPlatform(this);
     }
 
     private void Start()

@@ -203,6 +203,26 @@ public class PauseManager : MonoBehaviour
         yield return new WaitForSecondsRealtime(1f);
         SceneManager.LoadScene("StartScene");
     }
+    public void Subtitles()
+    {
+        Debug.Log("Завантажую сцену титрів...");
+        PlayConfirm();
+        Time.timeScale = 1f; // Обов'язково повертаємо час для анімацій
+        StartCoroutine(SubtitlesRoutine());
+    }
+
+    private IEnumerator SubtitlesRoutine()
+    {
+        Debug.Log("Починаю затухання...");
+        blackScreenExit.SetActive(true);
+        fadeAnimatorExit.Play("FadeOut", -1, 0f);
+
+        // Використовуйте WaitForSeconds, якщо Time.timeScale = 1
+        yield return new WaitForSecondsRealtime(1.1f);
+
+        Debug.Log("Спроба завантажити сцену Subtitles зараз!");
+        SceneManager.LoadScene("Subtitles");
+    }
 
     // Допоміжний метод для звуку натискання
     private void PlayConfirmSound()

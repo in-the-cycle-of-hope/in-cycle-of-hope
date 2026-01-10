@@ -57,11 +57,11 @@ TagManager:
   - name: Platforms
     uniqueID: 326218475
     locked: 0
-  - name: Player
-    uniqueID: 3902263911
-    locked: 0
   - name: FrontDecor
     uniqueID: 149374423
+    locked: 0
+  - name: Player
+    uniqueID: 3902263911
     locked: 0
   m_RenderingLayers:
   - Default

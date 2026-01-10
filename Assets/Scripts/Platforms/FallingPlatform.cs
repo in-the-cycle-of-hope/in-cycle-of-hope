@@ -5,96 +5,129 @@ using UnityEngine;
 [RequireComponent(typeof(Rigidbody2D))]
 public class FallingPlatform : MonoBehaviour
 {
-    [Header("Timing")] public float delayBeforeFall = 2f;
+    [Header("Timing")]
+    public float delayBeforeFall = 1.5f;
     public float shakeDuration = 0.5f;
     public float shakeStrength = 0.08f;
-    private bool isActivated;
+    public float fadeDuration = 0.8f;
 
-    [Header("Respawn")] 
+    [Header("Respawn")]
     public bool respawnPlatform = true;
-    public float respawnDelay = 5f;
+    public float respawnDelay = 3f;
+
     private Rigidbody2D rb;
+    private SpriteRenderer spriteRenderer;
+    private Collider2D platformCollider;
+
     private Vector3 startPosition;
     private Quaternion startRotation;
-    private Coroutine fallCoroutine;
-    private bool playerOnPlatform;
+    private bool isActivated;
     private bool hasFallen;
+
     private void Awake()
-    { 
+    {
         rb = GetComponent<Rigidbody2D>();
+        spriteRenderer = GetComponent<SpriteRenderer>();
+        platformCollider = GetComponent<Collider2D>();
+
         startPosition = transform.position;
         startRotation = transform.rotation;
         ResetPhysics();
-    } 
-    // -------------------- COLLISION --------------------
-      private void OnCollisionEnter2D(Collision2D collision)
-      { 
-        if (hasFallen) return;
-        if (collision.gameObject.CompareTag("Player") && !isActivated)
+    }
+
+    private void OnCollisionEnter2D(Collision2D collision)
+    {
+        // Перевіряємо, чи це гравець і чи не активована вже платформа
+        if (collision.gameObject.CompareTag("Player") && !isActivated && !hasFallen)
         {
-            isActivated = true;
-            fallCoroutine = StartCoroutine(FallRoutine());
+            // Перевіряємо, чи гравець зверху (щоб не падала, якщо вдарився головою знизу)
+            if (collision.contacts[0].normal.y < -0.5f)
+            {
+                isActivated = true;
+                StartCoroutine(FallRoutine());
+            }
         }
-    } 
-    private void OnCollisionExit2D(Collision2D collision) 
-    { 
-        if (collision.gameObject.CompareTag("Player")) 
-        { 
-            playerOnPlatform = false;
-        } 
-    } // -------------------- FALL LOGIC --------------------
+    }
+
     private IEnumerator FallRoutine()
     {
+        // 1. Чекаємо затримку
         yield return new WaitForSeconds(delayBeforeFall);
 
+        // 2. Звук
         if (AudioManager.Instance)
             AudioManager.Instance.PlaySFX(AudioManager.Instance.crack);
 
+        // 3. Тряска
         yield return StartCoroutine(Shake());
 
+        // 4. Падіння
         hasFallen = true;
         rb.bodyType = RigidbodyType2D.Dynamic;
-        rb.gravityScale = 1f;
+        rb.gravityScale = 1.5f; // Трохи швидше падіння
 
+        // 5. Плавне зникнення (одночасно з падінням)
+        yield return StartCoroutine(Fade(1f, 0f));
+
+        // 6. Вимикаємо фізику повністю
+        platformCollider.enabled = false;
+        rb.bodyType = RigidbodyType2D.Static;
+
+        // 7. Респавн
         if (respawnPlatform)
         {
             yield return new WaitForSeconds(respawnDelay);
-            ResetPlatform();
+
+            // Повертаємо на місце
+            transform.position = startPosition;
+            transform.rotation = startRotation;
+            ResetPhysics();
+
+            // Плавна поява
+            yield return StartCoroutine(Fade(0f, 1f));
+
+            // Включаємо колайдер ТІЛЬКИ після того, як вона з'явилася (або на початку появи)
+            platformCollider.enabled = true;
+            isActivated = false;
+            hasFallen = false;
         }
     }
-    private IEnumerator Shake() 
-    { 
+
+    private IEnumerator Shake()
+    {
         float elapsed = 0f;
-        while (elapsed < shakeDuration) 
-        { 
+        while (elapsed < shakeDuration)
+        {
             float offsetX = Random.Range(-shakeStrength, shakeStrength);
             transform.position = startPosition + new Vector3(offsetX, 0f, 0f);
             elapsed += Time.deltaTime;
-            yield return null; 
-        } 
-        transform.position = startPosition; 
-    } 
-
-    // -------------------- RESET --------------------
-    private void ResetPlatform() 
-    { 
-        StopAllCoroutines();
+            yield return null;
+        }
         transform.position = startPosition;
-        transform.rotation = startRotation;
-        ResetPhysics();
-        hasFallen = false;
-        playerOnPlatform = false;
-        fallCoroutine = null;
-        isActivated = false;
-    } 
-    private void ResetPhysics() 
-    { 
+    }
+
+    private IEnumerator Fade(float startAlpha, float endAlpha)
+    {
+        float elapsed = 0f;
+        Color color = spriteRenderer.color;
+
+        while (elapsed < fadeDuration)
+        {
+            elapsed += Time.deltaTime;
+            float alpha = Mathf.Lerp(startAlpha, endAlpha, elapsed / fadeDuration);
+            spriteRenderer.color = new Color(color.r, color.g, color.b, alpha);
+            yield return null;
+        }
+        // Фіксуємо кінцеве значення
+        spriteRenderer.color = new Color(color.r, color.g, color.b, endAlpha);
+    }
+
+    private void ResetPhysics()
+    {
         rb.linearVelocity = Vector2.zero;
         rb.angularVelocity = 0f;
         rb.bodyType = RigidbodyType2D.Kinematic;
         rb.gravityScale = 0f;
-        // 🔒 ЗАБОРОНА ОБЕРТАННЯ (ВАЖЛИВО ДЛЯ ПІКСЕЛЬ-АРТУ)
-        rb.freezeRotation = true;
-        rb.constraints = RigidbodyConstraints2D.FreezeRotation; 
+        rb.constraints = RigidbodyConstraints2D.FreezeRotation;
     }
 }

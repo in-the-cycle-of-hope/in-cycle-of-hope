@@ -4,7 +4,7 @@ using UnityEngine.Tilemaps;
 public class SkyTimeController : MonoBehaviour
 {
     [Header("Renderers")]
-    public SpriteRenderer spriteRenderer;
+    public Tilemap spriteRenderer;
 
     [Header("Time settings")]
     public float cycleDuration = 300f;
