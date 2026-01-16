@@ -24,23 +24,31 @@ public class PlayerIntro : MonoBehaviour
     private IEnumerator IntroRoutine()
     {
         isPlaying = true;
+        PlayerMovement mov = GetComponent<PlayerMovement>();
 
-        transform.position = startPoint.position;
+        mov.isIntroPlaying = true;
+        mov.isControlBlocked = true;
 
-        // Граємо інтро-анімацію
-        animator.Play("Intro", 0, 0f);
+        if (AudioManager.Instance != null)
+            AudioManager.Instance.PlaySFX(AudioManager.Instance.dragging);
 
-        // Чекаємо, поки кліп дограє
-        float clipLength = animator.GetCurrentAnimatorStateInfo(0).length;
-        yield return new WaitForSeconds(clipLength);
+        animator.Play("StartAnim", 0, 0f);
+        yield return null;
 
-        // Перемикаємося на Idle
-        animator.Play("Idle", 0, 0f);
+        float moveTime = 1.5f;
+        float elapsed = 0f;
+        while (elapsed < moveTime)
+        {
+            transform.position = Vector3.Lerp(startPoint.position, endPoint.position, elapsed / moveTime);
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
 
-        // Дозволяємо гравцю контроль / запускаємо діалог
-        // Тут виклик Fungus або будь-яка логіка
+        yield return new WaitForSeconds(2f);
+
+        mov.isIntroPlaying = false;
+        mov.isInDialogue = true;
 
         isPlaying = false;
     }
-
 }

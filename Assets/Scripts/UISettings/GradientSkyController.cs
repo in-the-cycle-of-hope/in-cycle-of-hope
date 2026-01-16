@@ -32,14 +32,12 @@ public class GradientSkyController : MonoBehaviour
         float phaseDuration = cycleDuration / 4f;
         float tCycle = timer % cycleDuration;
 
-        // 0: Night -> Sunrise (night fades out)
         if (tCycle < phaseDuration)
         {
             float t = tCycle / phaseDuration;
             SetSprite(nightSprite);
             SetColor(nightColor, Mathf.Lerp(nightAlpha, 0f, t));
         }
-        // 1: Sunrise (fade in + fade out)
         else if (tCycle < phaseDuration * 2f)
         {
             float t = (tCycle - phaseDuration) / phaseDuration;
@@ -48,30 +46,25 @@ public class GradientSkyController : MonoBehaviour
             float alpha;
             if (t < 0.5f)
             {
-                // Fade IN
                 alpha = Mathf.Lerp(0f, sunriseMaxAlpha, t * 2f);
             }
             else
             {
-                // Fade OUT
                 alpha = Mathf.Lerp(sunriseMaxAlpha, 0f, (t - 0.5f) * 2f);
             }
 
             SetColor(sunriseColor, alpha);
         }
-        // 2: Day (no gradient)
         else if (tCycle < phaseDuration * 3f)
         {
             gradientRenderer.sprite = null;
         }
-        // 3: Sunset (fade in + fade out, then night)
         else
         {
             float t = (tCycle - phaseDuration * 3f) / phaseDuration;
 
             if (t < 0.7f)
             {
-                // Sunset fade in/out
                 SetSprite(sunsetSprite);
 
                 float tt = t / 0.7f;
@@ -90,7 +83,6 @@ public class GradientSkyController : MonoBehaviour
             }
             else
             {
-                // Night fade in
                 float tt = (t - 0.7f) / 0.3f;
                 SetSprite(nightSprite);
                 SetColor(nightColor, Mathf.Lerp(0f, nightAlpha, tt));

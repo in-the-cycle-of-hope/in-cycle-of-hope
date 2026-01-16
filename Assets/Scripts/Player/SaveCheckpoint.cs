@@ -8,7 +8,6 @@ public class SaveCheckpoint : MonoBehaviour
 
     private void OnEnable()
     {
-        // Скидається при завантаженні сцени
         if (checkpointIndex == 0)
             lastShownCheckpointIndex = -1;
     }

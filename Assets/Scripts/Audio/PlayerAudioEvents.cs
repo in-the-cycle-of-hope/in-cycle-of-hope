@@ -21,21 +21,25 @@ public class PlayerAudioEvents : MonoBehaviour
 
     public void PlayJump()
     {
-        AudioManager.Instance.PlaySFX(jump);
+        if (AudioManager.Instance != null)
+            AudioManager.Instance.PlaySFX(jump);
     }
 
     public void PlayDash()
     {
-        AudioManager.Instance.PlaySFX(dash);
+        if (AudioManager.Instance != null)
+            AudioManager.Instance.PlaySFX(dash);
     }
 
     public void PlayClimb()
     {
-        AudioManager.Instance.PlaySFX(climb);
+        if (AudioManager.Instance != null)
+            AudioManager.Instance.PlaySFX(climb);
     }
 
     public void PlayDeath()
     {
-        AudioManager.Instance.PlaySFX(death);
+        if (AudioManager.Instance != null)
+            AudioManager.Instance.PlaySFX(death);
     }
 }

@@ -26,15 +26,10 @@ public class DialogCameraZoom : MonoBehaviour
 
     private IEnumerator DialogSequence(float targetSize)
     {
-        // 1. Знаходимо активну віртуальну камеру автоматично
         var activeCam = CinemachineCore.GetVirtualCamera(0);
-
-        // Якщо використовуєте старішу версію Cinemachine:
-        // ICinemachineCamera activeCam = CinemachineCore.Instance.GetActiveVirtualCamera(0);
 
         if (activeCam == null)
         {
-            Debug.LogWarning("Активну Cinemachine камеру не знайдено!");
             yield break;
         }
 
@@ -47,8 +42,6 @@ public class DialogCameraZoom : MonoBehaviour
 
         yield return new WaitForSecondsRealtime(1f);
 
-        // --- ЕТАП 2: ЗМІНА КАМЕРИ ---
-        // Приводимо до типу CinemachineCamera, щоб змінити Lens
         if (activeCam is CinemachineCamera vcam)
         {
             vcam.Lens.OrthographicSize = targetSize;
@@ -59,7 +52,6 @@ public class DialogCameraZoom : MonoBehaviour
         if (blackScreenObj1 != null)
             blackScreenObj1.SetActive(false);
 
-        // --- ЕТАП 3: ПРОЯСНЕННЯ ---
         if (blackScreenObj2 != null)
         {
             blackScreenObj2.SetActive(true);

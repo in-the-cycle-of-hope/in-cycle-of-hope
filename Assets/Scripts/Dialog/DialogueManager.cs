@@ -3,40 +3,28 @@ using UnityEngine;
 public class DialogueManager : MonoBehaviour
 {
     public static DialogueManager Instance;
+    private DialogAvatar _avatar;
 
-    private DialogAvatar avatar;
+    private DialogAvatar Avatar
+    {
+        get
+        {
+            if (_avatar == null)
+            {
+                _avatar = Object.FindAnyObjectByType<DialogAvatar>(FindObjectsInactive.Include);
+            }
+            return _avatar;
+        }
+    }
 
     private void Awake()
     {
         Instance = this;
     }
 
-    private void Start()
-    {
-        avatar = FindObjectOfType<DialogAvatar>(true);
-    }
-
-    public void ShowHeroHappy()
-    {
-        if (avatar == null)
-            avatar = FindObjectOfType<DialogAvatar>(true);
-
-        avatar?.ShowHeroHappy();
-    }
-
-    public void ShowHeroAngry()
-    {
-        if (avatar == null)
-            avatar = FindObjectOfType<DialogAvatar>(true);
-
-        avatar?.ShowHeroAngry();
-    }
-
-    public void HideAvatar()
-    {
-        if (avatar == null)
-            avatar = FindObjectOfType<DialogAvatar>(true);
-
-        avatar?.HideAvatar();
-    }
+    public void ShowHeroNeutral() => Avatar?.ShowHeroNeutral();
+    public void ShowHeroUnsure() => Avatar?.ShowHeroUnsure();
+    public void ShowHeroShocked() => Avatar?.ShowHeroShocked();
+    public void ShowHeroEnd() => Avatar?.ShowHeroEnd();
+    public void HideAvatar() => Avatar?.HideAvatar();
 }

@@ -22,7 +22,6 @@ public class SaveNotificationUI : MonoBehaviour
 
     void Awake()
     {
-        Debug.Log("SaveNotificationUI Awake");
         if (Instance == null) Instance = this;
         else Destroy(gameObject);
 
@@ -39,7 +38,6 @@ public class SaveNotificationUI : MonoBehaviour
 
     private IEnumerator ShowRoutine()
     {
-        // Fade In
         float t = 0f;
         while (t < fadeInTime)
         {
@@ -51,7 +49,6 @@ public class SaveNotificationUI : MonoBehaviour
         canvasGroup.alpha = 1f;
         yield return new WaitForSeconds(stayTime);
 
-        // Fade Out
         t = 0f;
         while (t < fadeOutTime)
         {

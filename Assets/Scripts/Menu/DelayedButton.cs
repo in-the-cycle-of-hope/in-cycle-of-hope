@@ -18,12 +18,14 @@ public class DelayedButton : MonoBehaviour
     [SerializeField] private float buttonAppearDelay = 1.0f;
     [SerializeField] private float buttonFadeDuration = 0.8f;
 
-    [Header("Audio")]
+    [Header("IAudio Sequence")]
+    [SerializeField] private AudioClip[] introSounds;
+    [SerializeField] private float pauseBetweenIntroSounds = 1.2f;
     [SerializeField] private AudioClip typingSound;
 
     [Header("Fading Systems")]
-    [SerializeField] private Animator fadeAnimatorIn;   // з чорного
-    [SerializeField] private Animator fadeAnimatorOut;  // в чорний
+    [SerializeField] private Animator fadeAnimatorIn;
+    [SerializeField] private Animator fadeAnimatorOut;
     [SerializeField] private GameObject blackScreenIn;
     [SerializeField] private GameObject blackScreenOut;
 
@@ -35,8 +37,6 @@ public class DelayedButton : MonoBehaviour
     private void Start()
     {
         Time.timeScale = 1f;
-
-        // Початковий стан UI
         titlesText.text = "";
         startButtonGroup.alpha = 0f;
         startButtonGroup.interactable = false;
@@ -46,12 +46,33 @@ public class DelayedButton : MonoBehaviour
         startButton.onClick.AddListener(OnStartClicked);
 
         StartCoroutine(FadeInRoutine());
-        StartCoroutine(FullSceneRoutine());
+        StartCoroutine(SequenceWithSoundsRoutine());
     }
 
-    // =========================
-    // FADE IN (з чорного)
-    // =========================
+    private IEnumerator SequenceWithSoundsRoutine()
+    {
+        for (int i = 0; i < introSounds.Length; i++)
+        {
+            if (introSounds[i] != null && AudioManager.Instance != null)
+            {
+                AudioManager.Instance.PlaySFX(introSounds[i]);
+            }
+            yield return new WaitForSecondsRealtime(2f);
+
+            if (i == 2)
+            {
+                if (AudioManager.Instance != null)
+                    AudioManager.Instance.PlayMusic(AudioManager.Instance.subtitlesMusic);
+
+                yield return new WaitForSecondsRealtime(4.0f);
+                yield return StartCoroutine(FullSceneRoutine());
+                yield break;
+            }
+
+            yield return new WaitForSecondsRealtime(pauseBetweenIntroSounds);
+        }
+    }
+
     private IEnumerator FadeInRoutine()
     {
         if (blackScreenIn != null && fadeAnimatorIn != null)
@@ -63,18 +84,11 @@ public class DelayedButton : MonoBehaviour
         }
     }
 
-    // =========================
-    // MAIN FLOW
-    // =========================
     private IEnumerator FullSceneRoutine()
     {
-        // 1. Друк титрів
         yield return StartCoroutine(TypeTextRoutine());
-
-        // 2. Затримка перед кнопкою
         yield return new WaitForSecondsRealtime(buttonAppearDelay);
 
-        // 3. Fade кнопки
         float t = 0f;
         while (t < buttonFadeDuration)
         {
@@ -83,14 +97,12 @@ public class DelayedButton : MonoBehaviour
             yield return null;
         }
 
-        // 4. Активація кнопки
         startButtonGroup.alpha = 1f;
         startButtonGroup.interactable = true;
         startButtonGroup.blocksRaycasts = true;
         startButton.interactable = true;
         isBusy = false;
 
-        // 5. Фокус для Enter
         if (EventSystem.current != null)
         {
             EventSystem.current.SetSelectedGameObject(null);
@@ -98,22 +110,16 @@ public class DelayedButton : MonoBehaviour
             EventSystem.current.SetSelectedGameObject(startButton.gameObject);
         }
 
-        // 6. Звук появи
         if (AudioManager.Instance != null)
             AudioManager.Instance.PlaySFX(AudioManager.Instance.menuMove);
     }
 
-    // =========================
-    // TYPEWRITER EFFECT
-    // =========================
     private IEnumerator TypeTextRoutine()
     {
         titlesText.text = "";
-
         foreach (char letter in fullText)
         {
             titlesText.text += letter;
-
             if (letter != ' ' && typingSound != null && AudioManager.Instance != null)
                 AudioManager.Instance.PlaySFX(typingSound);
 
@@ -121,26 +127,23 @@ public class DelayedButton : MonoBehaviour
         }
     }
 
-    // =========================
-    // START NEW GAME
-    // =========================
     private void OnStartClicked()
     {
         if (isBusy) return;
         isBusy = true;
 
+        StopAllCoroutines();
+
         if (AudioManager.Instance != null)
+        {
             AudioManager.Instance.PlaySFX(AudioManager.Instance.menuConfirm);
+            AudioManager.Instance.StopAllSounds();
+        }
 
-        // 🔥 НОВА ГРА = чистий сейв
         SaveSystem.ClearSave();
-
         StartCoroutine(FadeOutAndLoad());
     }
 
-    // =========================
-    // FADE OUT + LOAD
-    // =========================
     private IEnumerator FadeOutAndLoad()
     {
         if (blackScreenOut != null && fadeAnimatorOut != null)
@@ -149,7 +152,6 @@ public class DelayedButton : MonoBehaviour
             fadeAnimatorOut.SetTrigger("BlackScreen");
             yield return new WaitForSecondsRealtime(1f);
         }
-
         SceneManager.LoadScene(startGameScene);
     }
 }

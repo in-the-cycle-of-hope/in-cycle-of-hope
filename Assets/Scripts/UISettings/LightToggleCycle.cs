@@ -27,11 +27,9 @@ public class LightToggleCycle : MonoBehaviour
     {
         while (true)
         {
-            // Світло увімкнене
             light2D.enabled = true;
             yield return new WaitForSeconds(timeOn);
 
-            // Світло вимкнене
             light2D.enabled = false;
             yield return new WaitForSeconds(timeOff);
         }

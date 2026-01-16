@@ -37,10 +37,8 @@ public class FallingPlatform : MonoBehaviour
 
     private void OnCollisionEnter2D(Collision2D collision)
     {
-        // Перевіряємо, чи це гравець і чи не активована вже платформа
         if (collision.gameObject.CompareTag("Player") && !isActivated && !hasFallen)
         {
-            // Перевіряємо, чи гравець зверху (щоб не падала, якщо вдарився головою знизу)
             if (collision.contacts[0].normal.y < -0.5f)
             {
                 isActivated = true;
@@ -51,42 +49,32 @@ public class FallingPlatform : MonoBehaviour
 
     private IEnumerator FallRoutine()
     {
-        // 1. Чекаємо затримку
         yield return new WaitForSeconds(delayBeforeFall);
 
-        // 2. Звук
         if (AudioManager.Instance)
             AudioManager.Instance.PlaySFX(AudioManager.Instance.crack);
 
-        // 3. Тряска
         yield return StartCoroutine(Shake());
 
-        // 4. Падіння
         hasFallen = true;
         rb.bodyType = RigidbodyType2D.Dynamic;
-        rb.gravityScale = 1.5f; // Трохи швидше падіння
+        rb.gravityScale = 1.5f;
 
-        // 5. Плавне зникнення (одночасно з падінням)
         yield return StartCoroutine(Fade(1f, 0f));
 
-        // 6. Вимикаємо фізику повністю
         platformCollider.enabled = false;
         rb.bodyType = RigidbodyType2D.Static;
 
-        // 7. Респавн
         if (respawnPlatform)
         {
             yield return new WaitForSeconds(respawnDelay);
 
-            // Повертаємо на місце
             transform.position = startPosition;
             transform.rotation = startRotation;
             ResetPhysics();
 
-            // Плавна поява
             yield return StartCoroutine(Fade(0f, 1f));
 
-            // Включаємо колайдер ТІЛЬКИ після того, як вона з'явилася (або на початку появи)
             platformCollider.enabled = true;
             isActivated = false;
             hasFallen = false;
@@ -118,7 +106,6 @@ public class FallingPlatform : MonoBehaviour
             spriteRenderer.color = new Color(color.r, color.g, color.b, alpha);
             yield return null;
         }
-        // Фіксуємо кінцеве значення
         spriteRenderer.color = new Color(color.r, color.g, color.b, endAlpha);
     }
 

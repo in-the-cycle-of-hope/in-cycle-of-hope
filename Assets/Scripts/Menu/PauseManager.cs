@@ -25,9 +25,9 @@ public class PauseManager : MonoBehaviour
     [SerializeField] PlayerMovement playerMovement;
 
     [Header("Fading")]
-    [SerializeField] GameObject blackScreenStart; // Екран появи (Fade In)
+    [SerializeField] GameObject blackScreenStart;
     [SerializeField] Animator fadeAnimatorStart;
-    [SerializeField] GameObject blackScreenExit; // Вкажіть blackScreen1 (затухання)
+    [SerializeField] GameObject blackScreenExit;
     [SerializeField] Animator fadeAnimatorExit;
 
     void Start()
@@ -38,7 +38,6 @@ public class PauseManager : MonoBehaviour
 
     void Update()
     {
-        // 1. Звуки перемикання (залишаємо як було)
         GameObject current = EventSystem.current.currentSelectedGameObject;
         if (current != lastSelected && current != null)
         {
@@ -46,11 +45,8 @@ public class PauseManager : MonoBehaviour
             lastSelected = current;
         }
 
-        // 2. Логіка картинки управління
         if (controlsImage != null && controlsImage.activeSelf)
         {
-            // ДОДАЄМО ПЕРЕВІРКУ ЧАСУ:
-            // Якщо картинка відкрилася менше ніж 0.2 сек тому - ігноруємо закриття
             if (Time.unscaledTime - lastOpenedTime < 0.2f) return;
 
             if (Keyboard.current.escapeKey.wasPressedThisFrame || Keyboard.current.enterKey.wasPressedThisFrame)
@@ -60,7 +56,6 @@ public class PauseManager : MonoBehaviour
             return;
         }
 
-        // 3. Логіка виклику паузи (залишаємо як було)
         if (Keyboard.current.escapeKey.wasPressedThisFrame)
         {
             if (settingsPanel.activeSelf) CloseSettings();
@@ -104,7 +99,6 @@ public class PauseManager : MonoBehaviour
     {
         PlayConfirmSound();
 
-        // Запам'ятовуємо кнопку "Settings"
         buttonBeforeWindow = EventSystem.current.currentSelectedGameObject;
 
         pauseMenu.SetActive(false);
@@ -128,7 +122,6 @@ public class PauseManager : MonoBehaviour
         settingsPanel.SetActive(false);
         pauseMenu.SetActive(true);
 
-        // Повертаємо фокус туди, де він був
         if (buttonBeforeWindow != null)
         {
             StartCoroutine(SelectObject(buttonBeforeWindow));
@@ -144,7 +137,6 @@ public class PauseManager : MonoBehaviour
         warningPanel.SetActive(false);
         pauseMenu.SetActive(true);
 
-        // Повертаємо фокус туди, де він був
         if (buttonBeforeWindow != null)
         {
             StartCoroutine(SelectObject(buttonBeforeWindow));
@@ -160,7 +152,6 @@ public class PauseManager : MonoBehaviour
 
         PlayConfirm();
 
-        // Запам'ятовуємо, на якій кнопці ми стояли (це буде кнопка Controls)
         buttonBeforeWindow = EventSystem.current.currentSelectedGameObject;
 
         controlsImage.SetActive(true);
@@ -177,14 +168,12 @@ public class PauseManager : MonoBehaviour
         PlayConfirm();
         controlsImage.SetActive(false);
 
-        // Повертаємо фокус на кнопку, яка відкрила вікно
         if (buttonBeforeWindow != null)
         {
             StartCoroutine(SelectObject(buttonBeforeWindow));
         }
         else
         {
-            // Якщо раптом щось пішло не так — повертаємо на першу
             StartCoroutine(SelectObject(firstPauseButton));
         }
     }
@@ -192,39 +181,31 @@ public class PauseManager : MonoBehaviour
     public void Home()
     {
         PlayConfirm();
-        Time.timeScale = 1f; // Обов'язково повертаємо час для анімацій
+        Time.timeScale = 1f;
         StartCoroutine(HomeRoutine());
     }
 
     private IEnumerator HomeRoutine()
     {
         blackScreenExit.SetActive(true);
-        fadeAnimatorExit.Play("FadeOut", -1, 0f); // Назва вашої анімації згасання
+        fadeAnimatorExit.Play("FadeOut", -1, 0f);
         yield return new WaitForSecondsRealtime(1f);
         SceneManager.LoadScene("StartScene");
     }
     public void Subtitles()
     {
-        Debug.Log("Завантажую сцену титрів...");
-        PlayConfirm();
-        Time.timeScale = 1f; // Обов'язково повертаємо час для анімацій
+        Time.timeScale = 1f; 
         StartCoroutine(SubtitlesRoutine());
     }
 
     private IEnumerator SubtitlesRoutine()
     {
-        Debug.Log("Починаю затухання...");
         blackScreenExit.SetActive(true);
         fadeAnimatorExit.Play("FadeOut", -1, 0f);
-
-        // Використовуйте WaitForSeconds, якщо Time.timeScale = 1
         yield return new WaitForSecondsRealtime(1.1f);
-
-        Debug.Log("Спроба завантажити сцену Subtitles зараз!");
         SceneManager.LoadScene("Subtitles");
     }
 
-    // Допоміжний метод для звуку натискання
     private void PlayConfirmSound()
     {
         if (AudioManager.Instance != null)
@@ -237,11 +218,10 @@ public class PauseManager : MonoBehaviour
         {
             blackScreenStart.SetActive(true);
 
-            // Отримуємо CanvasGroup (додайте цей компонент на чорний екран в Unity!)
             CanvasGroup cg = blackScreenStart.GetComponent<CanvasGroup>();
-            if (cg != null) cg.alpha = 1f; // Примусово робимо ЧОРНИМ в перший же мікросекунду
+            if (cg != null) cg.alpha = 1f;
 
-            yield return new WaitForEndOfFrame(); // Чекаємо, поки все ініціалізується
+            yield return new WaitForEndOfFrame();
 
             fadeAnimatorStart.Play("BlackScreenOut", -1, 0f);
 

@@ -2,7 +2,7 @@ using UnityEngine;
 
 public class SingleStarController : MonoBehaviour
 {
-    public SpriteRenderer starRenderer; // Міняємо Tilemap на SpriteRenderer
+    public SpriteRenderer starRenderer;
     public SkyTimeController skyController;
 
     [Range(0f, 1f)] public float maxAlpha = 1f;
@@ -16,10 +16,9 @@ public class SingleStarController : MonoBehaviour
 
         float alpha = 0f;
 
-        // Логіка фаз (та сама, що була раніше)
-        if (currentTime < phaseDuration) // Ніч -> Світанок
+        if (currentTime < phaseDuration)
             alpha = Mathf.Lerp(maxAlpha, 0f, currentTime / phaseDuration);
-        else if (currentTime >= phaseDuration * 3f) // Захід -> Ніч
+        else if (currentTime >= phaseDuration * 3f)
             alpha = Mathf.Lerp(0f, maxAlpha, (currentTime - phaseDuration * 3f) / phaseDuration);
         else
             alpha = 0f;

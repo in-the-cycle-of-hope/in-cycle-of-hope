@@ -21,7 +21,7 @@ public static class SaveSystem
 
     public static bool CanContinue()
     {
-        return GetCheckpointIndex() > 0;
+        return PlayerPrefs.HasKey("SceneName");
     }
     public static void SaveAbilities(bool jump, bool dash, bool wall)
     {
@@ -36,6 +36,17 @@ public static class SaveSystem
         player.canJump = PlayerPrefs.GetInt("CanJump", 0) == 1;
         player.canDash = PlayerPrefs.GetInt("CanDash", 0) == 1;
         player.canGrabWall = PlayerPrefs.GetInt("CanWallGrab", 0) == 1;
+
+        player.isControlBlocked = false;
+        player.isInDialogue = false;
+        player.isIntroPlaying = false;
+
+        var rb = player.GetComponent<Rigidbody2D>();
+        if (rb != null)
+        {
+            rb.constraints = RigidbodyConstraints2D.FreezeRotation;
+            rb.gravityScale = 5f;
+        }
     }
     public static Vector3 LoadPosition()
     {

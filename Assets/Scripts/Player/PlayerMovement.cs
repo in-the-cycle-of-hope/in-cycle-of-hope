@@ -11,62 +11,45 @@ using UnityEngine.Playables;
 public class PlayerMovement : MonoBehaviour
 {
     #region Initialization
-
     public Flowchart flowchart;
     public DialogTrigger currentInteractable;
-
     public Rigidbody2D rb;
-    bool isFacingRight = true;
     public Vector3 respawnPoint;
     public Animator fadeAnimator;
     public Animator fadeAnimator2;
     public GameObject blackScreen;
     public GameObject blackScreen2;
-    public float fadeDelay = 0.2f;
     public PlayerInput playerInput;
     public bool isControlBlocked;
 
-    private RaycastHit2D[] lowerRayHitBuffer = new RaycastHit2D[1];
-    private RaycastHit2D[] upperRayHitBuffer = new RaycastHit2D[1];
-    private WaitForSeconds _dashCooldownWait;
-    private WaitForSeconds _wallJumpDurationWait;
-
-    [Header("Animation")]
-    [SerializeField] private Animator animator;
-    [SerializeField] private float idleLongDelay = 5f;
-    private float idleTimer;
-    [SerializeField] private float idlePhaseDelay = 5f;
-    [SerializeField] private float idleLong1Delay = 5f;
-    [SerializeField] private float idleLong2Delay = 5f;
-    private bool idleLong1Played;
-    private bool idleLong2Played;
-    public bool isDead;
-    private int deathLayerIndex;
-    private bool isRespawning;
-
-    [Header("Death")]
-    [SerializeField] private float deathAnimationDuration = 0.5f;
+    [Header("GroundCheck")]
+    public Transform groundCheckPos;
+    public Vector2 groundCheckSize = new Vector2(0.5f, 0.05f);
+    public LayerMask groundLayer;
 
     [Header("Movement")]
     public float moveSpeed = 5f;
     public float horizontalMovement;
     public Vector2 moveInput;
-    private bool isOnPlatform;
+    private float rawHorizontalInput;
 
     [Header("Jumping")]
     public float jumpPower = 10f;
     private bool isGrounded;
-    public float wallJumpDirectionBufferTime = 0.15f;
+    private bool wasGroundedLastFrame;
+    private float jumpBufferTime = 0.15f;
+    private float jumpBufferTimer;
+    private float coyoteTime = 0.15f;
+    private float coyoteTimer;
 
-    [Header("Wall setings")]
+    [Header("Wall settings")]
     [SerializeField] private Transform wallCheckPos;
     [SerializeField] private Vector2 wallCheckSize = new Vector2(0.5f, 1f);
     [SerializeField] private LayerMask wallLayer;
     [SerializeField] private float wallClimbSpeed = 3f;
-
-    private bool isGrabbingWall = false;
-    private bool isWallDetected = false;
-    private bool isWallGrabbingActive = false;
+    private bool isGrabbingWall;
+    private bool isWallDetected;
+    private bool isWallGrabbingActive;
     private float defaultGravity;
 
     [Header("Stamina")]
@@ -75,9 +58,7 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private float descendStaminaDrain = 50f;
     [SerializeField] private float idleStaminaDrain = 5f;
     [SerializeField] private float staminaRegenRate = 30f;
-
     [SerializeField] private Vector3 staminaLabelOffset = new Vector3(0f, 1.5f, 0f);
-
     private float currentStamina;
     private bool isOutOfStamina => currentStamina <= 0f;
 
@@ -86,16 +67,13 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private Vector2 wallJumpClimb = new Vector2(0.7f, 1.5f);
     [SerializeField] private float wallJumpDuration = 0.2f;
     [SerializeField] private float wallJumpStaminaCost = 15f;
-    [SerializeField] private float wallJumpGravityMultiplier = 1.5f;
     [SerializeField] private float wallJumpGracePeriod = 0.12f;
     [SerializeField] private float wallJumpInputBufferTime = 0.08f;
     [SerializeField] private float horizontalInputThreshold = 0.2f;
-
-    private bool wasGroundedLastFrame = false;
-    private float wallJumpGraceTimer = 0f;
-    private float wallJumpInputBufferTimer = 0f;
-    private float bufferedWallJumpInputX = 0f;
-    private bool isWallJumping = false;
+    private float wallJumpGraceTimer;
+    private float wallJumpInputBufferTimer;
+    private float bufferedWallJumpInputX;
+    private bool isWallJumping;
     private float wallJumpTimer;
 
     [Header("Ledge Climb")]
@@ -105,412 +83,146 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private float ledgeClimbTime = 0.15f;
     [SerializeField] private float ledgeClimbYOffset = 0.35f;
     [SerializeField] private float ledgePullBack = 0.10f;
-
-    private bool isClimbingLedge = false;
-
+    private bool isClimbingLedge;
 
     [Header("Dash Settings")]
     public float dashSpeed = 20f;
     public float dashDuration = 0.2f;
     public float dashCooldown = 0.5f;
     public int maxDashes = 1;
-
-    // Buffer dash
     private float dashBufferTime = 0.15f;
-    private float dashBufferTimer = 0f;
+    private float dashBufferTimer;
     private bool isDashing;
     private bool dashOnCooldown;
     private int remainingDashes;
     private Vector2 dashDirection;
 
-    [Header("GroundCheck")]
-    public Transform groundCheckPos;
-    public Vector2 groundCheckSize = new Vector2(0.5f, 0.05f);
-    public LayerMask groundLayer;
-
     [Header("Player step-up")]
-    [SerializeField] Transform stepRayUpper;
-    [SerializeField] Transform stepRayLower;
-    [SerializeField] float stepHeight = 0.08f;
-    [SerializeField] float stepSmooth = 0.04f;
-    [SerializeField] LayerMask Ground;
+    [SerializeField] private Transform stepRayUpper;
+    [SerializeField] private Transform stepRayLower;
+    [SerializeField] private float stepHeight = 0.08f;
+    [SerializeField] private float stepSmooth = 0.04f;
+    [SerializeField] private LayerMask Ground;
 
-    private float jumpBufferTime = 0.15f;
-    private float jumpBufferTimer = 0f;
-    private float coyoteTime = 0.15f;
-    private float coyoteTimer = 0f;
+    [Header("Animation")]
+    [SerializeField] private Animator animator;
+    [SerializeField] private float idleLong1Delay = 5f;
+    [SerializeField] private float idleLong2Delay = 5f;
+    private float idleTimer;
+    private bool idleLong1Played;
+    private bool idleLong2Played;
+    private bool idleForced;
+    public bool isDead;
+    private int deathLayerIndex;
+    private bool isRespawning;
+    public bool isIntroPlaying = false;
+
+    [Header("Death")]
+    [SerializeField] private float deathAnimationDuration = 0.5f;
 
     [Header("Tutorial Abilities")]
-    public bool canJump = false;
-    public bool canDash = false;
-    public bool canGrabWall = false;
+    public bool canJump;
+    public bool canDash;
+    public bool canGrabWall;
 
-    #endregion
-    private RigidbodyConstraints2D originalConstraints;
-    public void BlockControl()
-    {
-        isControlBlocked = true;
-
-        if (playerInput != null)
-            playerInput.enabled = false;
-
-        rb.linearVelocity = Vector2.zero;
-        rb.constraints = RigidbodyConstraints2D.FreezeRotation | RigidbodyConstraints2D.FreezePositionX;
-
-        animator.SetBool("isRunning", false);
-    }
-
-
-
-    public void UnblockControl()
-    {
-        isControlBlocked = false;
-
-        if (playerInput != null)
-            playerInput.enabled = true;
-
-        // 🔓 Повертаємо фізику
-        rb.constraints = RigidbodyConstraints2D.FreezeRotation;
-
-        // 🧹 Чистимо інпут
-        moveInput = Vector2.zero;
-        horizontalMovement = 0f;
-    }
-    public void ResetMovementState()
-    {
-        moveInput = Vector2.zero;
-        horizontalMovement = 0f;
-        rawHorizontalInput = 0f;
-
-        rb.linearVelocity = new Vector2(0f, rb.linearVelocity.y);
-        rb.angularVelocity = 0f;
-    }
     [Header("Dialogue Lock")]
-    public bool isInDialogue = false;
-    private bool waitForLandingToIdle = false;
-    private void ForceIdleAnimation()
-    {
-        if (idleForced) return; // ⛔ НЕ перезапускаємо кожен кадр
+    public bool isInDialogue;
+    public TextMeshProUGUI staminaTextDisplay;
 
-        idleForced = true;
-
-        animator.SetBool("isRunning", false);
-        animator.SetBool("isDashing", false);
-        animator.SetBool("isWallGrabbing", false);
-
-        animator.SetBool("isGrounded", true);
-        animator.SetFloat("yVelocity", 0f);
-
-        // ✅ Мʼякий перехід, НЕ ресет кожен кадр
-        animator.CrossFade("Idle", 0.1f);
-
-        idleTimer = 0f;
-        idleLong1Played = false;
-        idleLong2Played = false;
-    }
-
-
-    public void EnterDialogue()
-    {
-        isInDialogue = true;
-        BlockControl();
-
-        isDashing = false;
-        isWallGrabbingActive = false;
-        isGrabbingWall = false;
-        isWallJumping = false;
-        isClimbingLedge = false;
-
-        rb.linearVelocity = new Vector2(0f, rb.linearVelocity.y);
-        rb.gravityScale = defaultGravity;
-        rb.constraints = RigidbodyConstraints2D.FreezeRotation;
-
-        // якщо вже на землі — одразу Idle
-        if (isGrounded) ForceIdleAnimation();
-    }
-    public void ExitDialogue()
-    {
-        isInDialogue = false;
-        idleForced = false; // 🔁 дозволяємо анімаціям знову працювати
-        UnblockControl();
-    }
+    private bool isFacingRight = true;
+    private RaycastHit2D[] lowerRayHitBuffer = new RaycastHit2D[1];
+    private RaycastHit2D[] upperRayHitBuffer = new RaycastHit2D[1];
+    private WaitForSeconds _dashCooldownWait;
+    private WaitForSeconds _wallJumpDurationWait;
+    #endregion
 
     private void Awake()
     {
         SaveSystem.LoadAbilities(this);
         playerInput = GetComponent<PlayerInput>();
-
         deathLayerIndex = animator.GetLayerIndex("DeathLayer");
-
-        // Якщо скрипт не знайшов шар за назвою, він примусово візьме індекс 1
-        if (deathLayerIndex == -1)
-        {
-            deathLayerIndex = 1;
-        }
-    }
-    public void RespawnNow()
-    {
-        transform.position = respawnPoint;
-    }
-
-    public IEnumerator FadeRespawnTo(Vector3 newPosition)
-    {
-        // ВИМИКАЄМО ІНПУТ ОДРАЗУ
-        if (playerInput != null) playerInput.enabled = false;
-
-        // --- ЕТАП 1: ЗАТУХАННЯ (ЧОРНИЙ ЕКРАН) ---
-        if (blackScreen != null)
-        {
-            blackScreen.SetActive(true);
-            // Переконайтеся, що назва анімації "BlackScreenIn" вірна
-            fadeAnimator.Play("BlackScreenIn", -1, 0f);
-        }
-
-        // Чекаємо, поки екран повністю стане чорним
-        yield return new WaitForSecondsRealtime(1.0f);
-
-        // --- ЕТАП 2: ТЕЛЕПОРТАЦІЯ (ПОКИ ВСЕ ЧОРНЕ) ---
-        transform.position = newPosition;
-
-        // Скидаємо анімації
         if (deathLayerIndex == -1) deathLayerIndex = 1;
-        animator.SetLayerWeight(deathLayerIndex, 0f);
-        animator.Rebind();
-        animator.Update(0f);
-        animator.Play("Idle", 0, 0f);
-
-        rb.bodyType = RigidbodyType2D.Dynamic;
-        rb.linearVelocity = Vector2.zero;
-
-        yield return new WaitForSecondsRealtime(0.5f);
-
-        // --- ЕТАП 3: ПРОЯСНЕННЯ ---
-        if (blackScreen != null) blackScreen.SetActive(false);
-
-        if (blackScreen2 != null)
-        {
-            blackScreen2.SetActive(true);
-            fadeAnimator2.Play("BlackScreenOut", -1, 0f);
-        }
-
-        yield return new WaitForSecondsRealtime(1.0f);
-
-        if (blackScreen2 != null) blackScreen2.SetActive(false);
-
-        // ВІДНОВЛЕННЯ КОНТРОЛЮ
-        isDead = false;
-        isRespawning = false;
-        UnblockControl();
-    }
-    private void Start()
-    {
-        remainingDashes = maxDashes;
-        defaultGravity = rb.gravityScale;
-        currentStamina = maxStamina;
 
         _dashCooldownWait = new WaitForSeconds(dashCooldown);
         _wallJumpDurationWait = new WaitForSeconds(wallJumpDuration);
+        defaultGravity = rb.gravityScale;
+    }
+
+    private void Start()
+    {
+        remainingDashes = maxDashes;
+        currentStamina = maxStamina;
 
         if (SaveSystem.CanContinue())
         {
             transform.position = SaveSystem.LoadPosition();
-        }
-    }
-    void UpdateAnimations()
-    {
-        if (isDead || isRespawning) return;
-
-        // 1. ДЕШ МАЄ НАЙВИЩИЙ ПРІОРИТЕТ
-        animator.SetBool("isDashing", isDashing);
-
-        if (isDashing)
-        {
-            // Коли ми в деші, ігноруємо все інше
-            animator.SetBool("isRunning", false);
-            animator.SetBool("isWallGrabbing", false);
-            animator.SetFloat("yVelocity", 0f);
-            return; // Виходимо з методу, щоб інша логіка не перезаписувала параметри
-        }
-
-        float speed = Mathf.Abs(rb.linearVelocity.x);
-        float yVel = rb.linearVelocity.y;
-
-        bool hasMoveInput = Mathf.Abs(moveInput.x) > 0.01f;
-
-        // базові параметри (як у тебе)
-        animator.SetBool("isGrounded", isGrounded);
-        animator.SetFloat("yVelocity", yVel);
-
-        bool canRun =
-            isGrounded &&
-            !isDashing &&
-            !isWallGrabbingActive &&
-            !isWallJumping &&
-            !isClimbingLedge &&
-            (hasMoveInput || speed > 0.1f);
-
-        animator.SetBool("isRunning", canRun);
-
-        // ✅ Супер-важливо: canIdle має стати false при будь-якій “дії”
-        // (включно з маленьким дрейфом по X або рухом по Y)
-        bool canIdle =
-            isGrounded &&
-            !isDashing &&
-            !isWallGrabbingActive &&
-            !isWallJumping &&
-            !isClimbingLedge &&
-            !hasMoveInput &&
-            speed < 0.05f;
-
-        if (canIdle)
-        {
-            idleTimer += Time.deltaTime;
-
-            // 1-а довга анімація — рівно 1 раз за стояння
-            if (!idleLong1Played && idleTimer >= idleLong1Delay)
-            {
-                animator.SetTrigger("IdleLong1");
-                idleLong1Played = true;
-            }
-
-            // 2-а довга анімація — рівно 1 раз за стояння
-            if (!idleLong2Played && idleTimer >= idleLong2Delay)
-            {
-                animator.SetTrigger("IdleLong2");
-                idleLong2Played = true;
-            }
-        }
-        else
-        {
-            // ✅ Скидання циклу ТІЛЬКИ коли гравець зробив дію
-            idleTimer = 0f;
-            idleLong1Played = false;
-            idleLong2Played = false;
-        }
-        AnimatorStateInfo state = animator.GetCurrentAnimatorStateInfo(0);
-
-        if (idleLong2Played && state.IsName("Idle"))
-        {
-            idleTimer = 0f;
-            idleLong1Played = false;
-            idleLong2Played = false;
-        }
-        // 💨 Dash
-        animator.SetBool("isDashing", isDashing);
-
-        animator.SetBool("isWallGrabbing", isWallGrabbingActive);
-        animator.SetFloat("wallClimbSpeed", Mathf.Abs(moveInput.y));
-
-        // НОВЕ: Якщо ми на стіні, примусово вимикаємо біг і стрибки в аніматорі
-        if (isWallGrabbingActive)
-        {
-            // Це змусить аніматор вийти з будь-якого стану, 
-            // що базується на швидкості падіння або відсутності землі
+            animator.SetBool("isGrounded", true);
             animator.SetFloat("yVelocity", 0f);
             animator.SetBool("isRunning", false);
+            animator.Play("Idle", 0, 0f);
+            animator.Update(0f);
         }
     }
-    public void Die(Vector3 respawnPosition)
-    {
-        if (isDead || isRespawning) return;
 
-        isDead = true;
-        isRespawning = true;
-        respawnPoint = respawnPosition;
-
-        BlockControl();
-
-        // 2. Вмикаємо анімацію смерті
-        if (deathLayerIndex == -1) deathLayerIndex = 1;
-        animator.SetLayerWeight(deathLayerIndex, 1f);
-        animator.Play("Death", deathLayerIndex, 0f);
-
-        // 3. Запускаємо послідовність
-        StartCoroutine(DeathSequence());
-    }
-
-    private IEnumerator DeathSequence()
-    {
-        // 1. Даємо анімації смерті програтися
-        yield return new WaitForSecondsRealtime(deathAnimationDuration);
-
-        // 2. Чорний екран + телепорт
-        yield return StartCoroutine(FadeRespawnTo(respawnPoint));
-
-        // 3. 🔁 РЕСЕТ СВІТУ (платформи, пастки, тощо)
-        RespawnManager.ResetWorld();
-
-        // 4. Повертаємо контроль
-        isDead = false;
-        isRespawning = false;
-        UnblockControl();
-    }
-    private bool idleForced = false;
-
-    void Update()
+    private void Update()
     {
         if (isControlBlocked)
         {
             moveInput = Vector2.zero;
             GroundCheck();
-
-            if (isInDialogue)
+            if (isInDialogue && !isIntroPlaying)
             {
-                if (isGrounded)
-                {
-                    ForceIdleAnimation(); // тепер викликається безпечно
-                }
+                if (isGrounded) ForceIdleAnimation();
                 else
                 {
-
                     animator.SetBool("isGrounded", false);
                     animator.SetFloat("yVelocity", rb.linearVelocity.y);
                 }
             }
-
             return;
         }
+
         GroundCheck();
         jumpBufferTimer -= Time.deltaTime;
         dashBufferTimer -= Time.deltaTime;
         wallJumpGraceTimer -= Time.deltaTime;
-        if (wallJumpInputBufferTimer > 0)
-            wallJumpInputBufferTimer -= Time.deltaTime;
-        if (isGrounded)
-            coyoteTimer = coyoteTime;
-        else
-            coyoteTimer -= Time.deltaTime;
+        if (wallJumpInputBufferTimer > 0) wallJumpInputBufferTimer -= Time.deltaTime;
+
+        if (isGrounded) coyoteTimer = coyoteTime;
+        else coyoteTimer -= Time.deltaTime;
+
         HandleWallGrabbing();
+
         if (jumpBufferTimer > 0 && (isGrounded || coyoteTimer > 0) && !isDashing && !isWallJumping)
         {
             DoJump();
             jumpBufferTimer = 0f;
             coyoteTimer = 0f;
         }
+
         if (dashBufferTimer > 0 && !isDashing && !dashOnCooldown && remainingDashes > 0 && !isWallGrabbingActive)
         {
-            Vector2 dashInput = moveInput;
-            if (dashInput == Vector2.zero)
-                dashInput = isFacingRight ? Vector2.right : Vector2.left;
+            Vector2 dashInput = moveInput == Vector2.zero ? (isFacingRight ? Vector2.right : Vector2.left) : moveInput;
             StartCoroutine(DashCoroutine(dashInput.normalized));
             dashBufferTimer = 0f;
         }
-        if ((isGrounded || isOnPlatform) && remainingDashes < maxDashes && !isDashing)
+
+        if ((isGrounded || Physics2D.OverlapBox(groundCheckPos.position, groundCheckSize, 0, groundLayer)) && remainingDashes < maxDashes && !isDashing)
         {
             remainingDashes = maxDashes;
             dashOnCooldown = false;
         }
+
         if (isWallJumping)
         {
             wallJumpTimer -= Time.deltaTime;
-            if (wallJumpTimer <= 0)
-            {
-                isWallJumping = false;
-            }
+            if (wallJumpTimer <= 0) isWallJumping = false;
         }
+
         UpdateAnimations();
         UpdateStaminaUI();
     }
+
     private void FixedUpdate()
     {
         if (isControlBlocked)
@@ -518,15 +230,9 @@ public class PlayerMovement : MonoBehaviour
             rb.linearVelocity = new Vector2(0f, rb.linearVelocity.y);
             return;
         }
-        if (isDashing) { return; }
-        if (isWallJumping)
-        {
-            return;
-        }
-        if (isWallGrabbingActive && !isClimbingLedge)
-        {
-            TryLedgeClimb();
-        }
+        if (isDashing || isWallJumping) return;
+
+        if (isWallGrabbingActive && !isClimbingLedge) TryLedgeClimb();
 
         if (isWallGrabbingActive)
         {
@@ -534,10 +240,8 @@ public class PlayerMovement : MonoBehaviour
             {
                 rb.constraints = RigidbodyConstraints2D.FreezeRotation;
                 rb.linearVelocity = new Vector2(0f, moveInput.y * wallClimbSpeed);
-                if (moveInput.y > 0.01f)
-                    currentStamina -= climbStaminaDrain * Time.fixedDeltaTime;
-                else if (moveInput.y < -0.01f)
-                    currentStamina -= descendStaminaDrain * Time.fixedDeltaTime;
+                if (moveInput.y > 0.01f) currentStamina -= climbStaminaDrain * Time.fixedDeltaTime;
+                else if (moveInput.y < -0.01f) currentStamina -= descendStaminaDrain * Time.fixedDeltaTime;
             }
             else
             {
@@ -547,18 +251,14 @@ public class PlayerMovement : MonoBehaviour
             }
 
             currentStamina = Mathf.Clamp(currentStamina, 0f, maxStamina);
-
             if (isOutOfStamina)
             {
                 isGrabbingWall = false;
                 isWallGrabbingActive = false;
                 rb.gravityScale = defaultGravity;
-
                 rb.constraints = RigidbodyConstraints2D.FreezeRotation;
-
                 wallJumpGraceTimer = wallJumpGracePeriod;
             }
-
             return;
         }
         rb.linearVelocity = new Vector2(horizontalMovement * moveSpeed, rb.linearVelocity.y);
@@ -566,103 +266,80 @@ public class PlayerMovement : MonoBehaviour
     }
 
     #region Tutorial API (Fungus)
-    public void EnableJump()
-    {
-        canJump = true;
-        SaveSystem.SaveAbilities(canJump, canDash, canGrabWall);
-    }
-    public void EnableDash()
-    {
-        canDash = true;
-        SaveSystem.SaveAbilities(canJump, canDash, canGrabWall);
-    }
-    public void EnableWallGrab()
-    {
-        canGrabWall = true;
-        SaveSystem.SaveAbilities(canJump, canDash, canGrabWall);
-    }
+    public void EnableJump() { canJump = true; SaveSystem.SaveAbilities(canJump, canDash, canGrabWall); }
+    public void EnableDash() { canDash = true; SaveSystem.SaveAbilities(canJump, canDash, canGrabWall); }
+    public void EnableWallGrab() { canGrabWall = true; SaveSystem.SaveAbilities(canJump, canDash, canGrabWall); }
     #endregion
 
     #region Movement
-    private float rawHorizontalInput;
     public void Move(InputAction.CallbackContext context)
     {
         if (isControlBlocked) return;
-        Vector2 rawMoveInput = context.ReadValue<Vector2>();
-        rawHorizontalInput = rawMoveInput.x;
+        Vector2 rawInput = context.ReadValue<Vector2>();
+        rawHorizontalInput = rawInput.x;
         if (isWallGrabbingActive)
         {
-            moveInput = new Vector2(0f, rawMoveInput.y);
+            moveInput = new Vector2(0f, rawInput.y);
             horizontalMovement = 0f;
         }
         else
         {
-            moveInput = rawMoveInput;
+            moveInput = rawInput;
             horizontalMovement = moveInput.x;
         }
         Flip();
     }
+
     void StepUp()
     {
         Vector2 dir = Vector2.right * transform.localScale.x;
-
-        int numLowerHits = Physics2D.RaycastNonAlloc(stepRayLower.position, dir, lowerRayHitBuffer, 0.1f, Ground); // Змінено на Ground
-        UnityEngine.Debug.DrawRay(stepRayLower.position, dir * 0.1f, Color.red);
-
-        if (numLowerHits > 0)
+        if (Physics2D.RaycastNonAlloc(stepRayLower.position, dir, lowerRayHitBuffer, 0.1f, Ground) > 0)
         {
-            RaycastHit2D hitLower = lowerRayHitBuffer[0];
-            int numUpperHits = Physics2D.RaycastNonAlloc(stepRayUpper.position, dir, upperRayHitBuffer, 0.2f, Ground); // Змінено на Ground
-
-            if (numUpperHits == 0)
+            if (Physics2D.RaycastNonAlloc(stepRayUpper.position, dir, upperRayHitBuffer, 0.2f, Ground) == 0)
             {
-                float obstacleHeight = hitLower.point.y - rb.position.y;
-                if (obstacleHeight <= stepHeight + 0.01f && Mathf.Abs(moveInput.x) > 0.01f)
+                if (lowerRayHitBuffer[0].point.y - rb.position.y <= stepHeight + 0.01f && Mathf.Abs(moveInput.x) > 0.01f)
                 {
                     rb.position += Vector2.up * stepSmooth;
                 }
             }
         }
     }
+
+    private void Flip()
+    {
+        if (isControlBlocked || Time.timeScale == 0f) return;
+        if ((moveInput.x > 0 && !isFacingRight) || (moveInput.x < 0 && isFacingRight)) FlipImmediate();
+    }
+
+    private void FlipImmediate()
+    {
+        isFacingRight = !isFacingRight;
+        Vector3 scale = transform.localScale;
+        scale.x *= -1;
+        transform.localScale = scale;
+    }
     #endregion
 
     #region Jumping
-    private void DoJump()
-    {
-        rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpPower);
-    }
+    private void DoJump() => rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpPower);
+
     public void Jump(InputAction.CallbackContext context)
     {
-        if (!canJump) return;
-        if (context.started)
+        if (!canJump || !context.started || isDashing) return;
+        jumpBufferTimer = jumpBufferTime;
+        if ((isWallDetected && isGrabbingWall && !isGrounded) || (wallJumpGraceTimer > 0 && isWallDetected))
         {
-            jumpBufferTimer = jumpBufferTime;
-            if (!isDashing)
-            {
-                if ((isWallDetected && isGrabbingWall && !isGrounded) || (wallJumpGraceTimer > 0 && isWallDetected))
-                {
-                    bufferedWallJumpInputX = rawHorizontalInput;
-                    wallJumpInputBufferTimer = wallJumpInputBufferTime;
+            bufferedWallJumpInputX = rawHorizontalInput;
+            wallJumpInputBufferTimer = wallJumpInputBufferTime;
+            if (!isGrabbingWall) return;
 
-                    if (!isGrabbingWall)
-                        return;
+            bool intendsWrong = (isFacingRight && bufferedWallJumpInputX > horizontalInputThreshold) || (!isFacingRight && bufferedWallJumpInputX < -horizontalInputThreshold);
+            if (intendsWrong || (moveInput.y > 0.5f && currentStamina < wallJumpStaminaCost)) return;
 
-                    bool intendsWrongDirection =
-                        (isFacingRight && bufferedWallJumpInputX > horizontalInputThreshold) ||
-                        (!isFacingRight && bufferedWallJumpInputX < -horizontalInputThreshold);
-                    if (intendsWrongDirection)
-                        return;
-
-                    if (moveInput.y > 0.5f && currentStamina < wallJumpStaminaCost)
-                        return;
-
-                    wallJumpGraceTimer = 0f;
-                    DoWallJump();
-                    jumpBufferTimer = 0f;
-                    coyoteTimer = 0f;
-                    return;
-                }
-            }
+            wallJumpGraceTimer = 0f;
+            DoWallJump();
+            jumpBufferTimer = 0f;
+            coyoteTimer = 0f;
         }
     }
     #endregion
@@ -671,14 +348,10 @@ public class PlayerMovement : MonoBehaviour
     public void Grab(InputAction.CallbackContext context)
     {
         if (!canGrabWall) return;
-        if (context.started)
-        {
-            isGrabbingWall = true;
-        }
+        if (context.started) isGrabbingWall = true;
         else if (context.canceled)
         {
             isGrabbingWall = false;
-
             if (isWallGrabbingActive)
             {
                 isWallGrabbingActive = false;
@@ -687,20 +360,11 @@ public class PlayerMovement : MonoBehaviour
             }
         }
     }
+
     private void HandleWallGrabbing()
     {
-        bool shouldCheckWall =
-            !isGrounded && (isGrabbingWall || wallJumpGraceTimer > 0 || wallJumpInputBufferTimer > 0);
-
-        if (shouldCheckWall)
-        {
-            Collider2D wallCollider = Physics2D.OverlapBox(wallCheckPos.position, wallCheckSize, 0f, wallLayer);
-            isWallDetected = wallCollider != null;
-        }
-        else
-        {
-            isWallDetected = false;
-        }
+        bool shouldCheckWall = !isGrounded && (isGrabbingWall || wallJumpGraceTimer > 0 || wallJumpInputBufferTimer > 0);
+        isWallDetected = shouldCheckWall && Physics2D.OverlapBox(wallCheckPos.position, wallCheckSize, 0f, wallLayer);
 
         if (isWallJumping || wallJumpGraceTimer > 0)
         {
@@ -713,218 +377,112 @@ public class PlayerMovement : MonoBehaviour
             return;
         }
 
-        bool canActivateWallGrab =
-        isGrabbingWall &&
-        isWallDetected &&
-        !isGrounded &&
-        !isDashing &&
-        !isOutOfStamina &&
-        !isWallGrabbingTemporarilyDisabled;
-
-        if (canActivateWallGrab)
+        if (isGrabbingWall && isWallDetected && !isGrounded && !isDashing && !isOutOfStamina)
         {
             if (!isWallGrabbingActive)
             {
                 isWallGrabbingActive = true;
                 rb.gravityScale = 0f;
                 rb.linearVelocity = Vector2.zero;
-
                 rb.constraints = RigidbodyConstraints2D.FreezeRotation | RigidbodyConstraints2D.FreezePositionY;
             }
         }
-        else
+        else if (isWallGrabbingActive)
         {
-            if (isWallGrabbingActive)
-            {
-                isWallGrabbingActive = false;
-                rb.gravityScale = defaultGravity;
-                rb.constraints = RigidbodyConstraints2D.FreezeRotation;
-            }
+            isWallGrabbingActive = false;
+            rb.gravityScale = defaultGravity;
+            rb.constraints = RigidbodyConstraints2D.FreezeRotation;
         }
 
         if (isGrounded && currentStamina < maxStamina)
         {
-            currentStamina += staminaRegenRate * Time.deltaTime;
-            currentStamina = Mathf.Clamp(currentStamina, 0f, maxStamina);
+            currentStamina = Mathf.Min(currentStamina + staminaRegenRate * Time.deltaTime, maxStamina);
         }
     }
-    private bool isWallGrabbingTemporarilyDisabled = false;
+
     private void DoWallJump()
     {
-
         isWallJumping = true;
         wallJumpTimer = wallJumpDuration;
         rb.linearVelocity = Vector2.zero;
         rb.gravityScale = defaultGravity;
         int wallDir = transform.localScale.x > 0 ? -1 : 1;
-        bool isPressingAwayFromWall =
-            (isFacingRight && bufferedWallJumpInputX < -horizontalInputThreshold) ||
-            (!isFacingRight && bufferedWallJumpInputX > horizontalInputThreshold);
-        bool isUpPressed = moveInput.y > 0.5f;
-        Vector2 jumpForceVector;
-        if (isUpPressed)
+        bool isPressingAway = (isFacingRight && bufferedWallJumpInputX < -horizontalInputThreshold) || (!isFacingRight && bufferedWallJumpInputX > horizontalInputThreshold);
+        Vector2 force;
+        if (moveInput.y > 0.5f || !isPressingAway)
         {
-            jumpForceVector = Vector2.up * wallJumpForce;
+            force = Vector2.up * wallJumpForce;
             currentStamina -= wallJumpStaminaCost;
         }
-        else if (isPressingAwayFromWall)
-        {
-            jumpForceVector = new Vector2(wallJumpClimb.x * wallDir, wallJumpClimb.y);
-        }
-        else
-        {
-            jumpForceVector = Vector2.up * wallJumpForce;
-            currentStamina -= wallJumpStaminaCost;
-        }
-        currentStamina = Mathf.Clamp(currentStamina, 0f, maxStamina);
-        rb.AddForce(jumpForceVector, ForceMode2D.Impulse);
+        else force = new Vector2(wallJumpClimb.x * wallDir, wallJumpClimb.y);
 
-        if (isPressingAwayFromWall)
-        {
-            if ((isFacingRight && wallDir == -1) || (!isFacingRight && wallDir == 1) && !isControlBlocked)
-            {
-                FlipImmediate();
-            }
-        }
-        StopCoroutine(nameof(WallJumpRoutine));
+        currentStamina = Mathf.Max(0, currentStamina);
+        rb.AddForce(force, ForceMode2D.Impulse);
+        if (isPressingAway) FlipImmediate();
         StartCoroutine(WallJumpRoutine());
         wallJumpGraceTimer = wallJumpGracePeriod;
         bufferedWallJumpInputX = 0f;
         wallJumpInputBufferTimer = 0f;
     }
+
     private IEnumerator WallJumpRoutine()
     {
         yield return _wallJumpDurationWait;
         isWallJumping = false;
-        rb.gravityScale = defaultGravity;
     }
+
     private void TryLedgeClimb()
     {
         Vector2 dir = isFacingRight ? Vector2.right : Vector2.left;
+        if (!Physics2D.OverlapBox(wallCheckPos.position, wallCheckSize, 0f, wallLayer)) return;
+        if (Physics2D.OverlapBox((Vector2)wallCheckPos.position + Vector2.up * ledgeCheckUp, new Vector2(0.4f, 0.6f), 0f, wallLayer)) return;
+        RaycastHit2D hitDown = Physics2D.Raycast((Vector2)wallCheckPos.position + dir * ledgeCheckForward + Vector2.up * ledgeCheckUp, Vector2.down, ledgeCheckDownDist, groundLayer);
+        if (!hitDown) return;
 
-        bool wallBelow = Physics2D.OverlapBox(wallCheckPos.position, wallCheckSize, 0f, wallLayer);
-        if (!wallBelow)
-        {
-            return;
-        }
-
-        Vector2 headCheckPos = (Vector2)wallCheckPos.position + Vector2.up * ledgeCheckUp;
-        Vector2 headBoxSize = new Vector2(0.4f, 0.6f);
-        bool blockedAbove = Physics2D.OverlapBox(headCheckPos, headBoxSize, 0f, wallLayer);
-        if (blockedAbove)
-        {
-            return;
-        }
-
-        Vector2 probePoint = (Vector2)wallCheckPos.position + dir * ledgeCheckForward + Vector2.up * ledgeCheckUp;
-
-        RaycastHit2D hitDown = Physics2D.Raycast(probePoint, Vector2.down, ledgeCheckDownDist, groundLayer);
-        if (!hitDown)
-        {
-            return;
-        }
-
-        Vector3 targetPos = new Vector3(
-            hitDown.point.x - (isFacingRight ? ledgePullBack : -ledgePullBack),
-            hitDown.point.y + ledgeClimbYOffset,
-            transform.position.z
-        );
-
-        StartCoroutine(LedgeClimbRoutine(targetPos));
+        Vector3 target = new Vector3(hitDown.point.x - (isFacingRight ? ledgePullBack : -ledgePullBack), hitDown.point.y + ledgeClimbYOffset, transform.position.z);
+        StartCoroutine(LedgeClimbRoutine(target));
     }
 
     private IEnumerator LedgeClimbRoutine(Vector3 targetPos)
     {
         isClimbingLedge = true;
-        isWallGrabbingActive = false;
-        isGrabbingWall = false;
-
+        isWallGrabbingActive = isGrabbingWall = false;
         rb.gravityScale = 0f;
         rb.linearVelocity = Vector2.zero;
-        rb.angularVelocity = 0f;
-        rb.constraints = RigidbodyConstraints2D.FreezeRotation;
-
         Vector3 start = transform.position;
         float t = 0f;
-
         while (t < 1f)
         {
             t += Time.deltaTime / ledgeClimbTime;
             transform.position = Vector3.Lerp(start, targetPos, Mathf.SmoothStep(0f, 1f, t));
             yield return null;
         }
-
         transform.position = targetPos;
-
         rb.gravityScale = defaultGravity;
-        rb.constraints = RigidbodyConstraints2D.FreezeRotation;
-
         yield return new WaitForSeconds(0.05f);
-
         isClimbingLedge = false;
     }
-    [Header("UI Settings")]
-    public TextMeshProUGUI staminaTextDisplay;
-    void UpdateStaminaUI()
-    {
-        if (staminaTextDisplay == null) return;
-
-        // 1. Оновлюємо текст
-        staminaTextDisplay.text = Mathf.FloorToInt(currentStamina).ToString();
-
-        // 2. Умови показу (твоя логіка)
-        bool isShiftPressed = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
-        bool shouldShow = canGrabWall &&
-                          (isWallDetected || isWallGrabbingActive) &&
-                          isShiftPressed &&
-                          !isDead;
-
-        staminaTextDisplay.gameObject.SetActive(shouldShow);
-
-        if (shouldShow)
-        {
-            // 3. Позиціонування Canvas (якщо він дочірній)
-            // Ми примусово ставимо scale.x = 1 (або -1), щоб текст завжди був читабельним
-            // навіть якщо гравець розвернувся (flipped)
-            float parentXScale = transform.localScale.x;
-            Vector3 newScale = staminaTextDisplay.transform.parent.localScale;
-            newScale.x = Mathf.Abs(newScale.x) * (parentXScale > 0 ? 1 : -1);
-            staminaTextDisplay.transform.parent.localScale = newScale;
-
-            // Встановлюємо офсет
-            staminaTextDisplay.transform.parent.localPosition = staminaLabelOffset;
-        }
-    }
-
-
     #endregion
 
     #region Dashing
     public void Dash(InputAction.CallbackContext context)
     {
-        if (!canDash) return;
-        if (context.started)
-        {
-            dashBufferTimer = dashBufferTime;
-        }
+        if (canDash && context.started) dashBufferTimer = dashBufferTime;
     }
+
     private IEnumerator DashCoroutine(Vector2 inputDirection)
     {
         isDashing = true;
-        float originalGravity = rb.gravityScale;
         rb.gravityScale = defaultGravity;
-        dashDirection = inputDirection == Vector2.zero
-            ? (isFacingRight ? Vector2.right : Vector2.left)
-            : inputDirection.normalized;
-        float dashTime = 0f;
-        while (dashTime < dashDuration)
+        dashDirection = inputDirection;
+        float elapsed = 0f;
+        while (elapsed < dashDuration)
         {
             rb.MovePosition(rb.position + dashDirection * dashSpeed * Time.fixedDeltaTime);
             StepUp();
-            dashTime += Time.fixedDeltaTime;
+            elapsed += Time.fixedDeltaTime;
             yield return new WaitForFixedUpdate();
         }
-        rb.gravityScale = originalGravity;
         rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0f);
         isDashing = false;
         remainingDashes--;
@@ -936,36 +494,155 @@ public class PlayerMovement : MonoBehaviour
         }
     }
     #endregion
+
+    #region Helper Methods
     private void GroundCheck()
     {
         isGrounded = Physics2D.OverlapBox(groundCheckPos.position, groundCheckSize, 0, groundLayer);
-
-        if (isGrounded && rb.gravityScale != defaultGravity)
+        if (isGrounded)
         {
-            rb.gravityScale = defaultGravity;
-        }
-
-        if (isGrounded && !wasGroundedLastFrame)
-        {
-            currentStamina = maxStamina;
+            if (rb.gravityScale != defaultGravity) rb.gravityScale = defaultGravity;
+            if (!wasGroundedLastFrame) currentStamina = maxStamina;
         }
         wasGroundedLastFrame = isGrounded;
     }
-    private void Flip()
+
+    void UpdateAnimations()
     {
-        if (isControlBlocked || Time.timeScale == 0f) return;
-        if (moveInput.x > 0 && !isFacingRight)
-            FlipImmediate();
-        else if (moveInput.x < 0 && isFacingRight)
-            FlipImmediate();
+        if (isDead || isRespawning) return;
+        animator.SetBool("isDashing", isDashing);
+        if (isDashing)
+        {
+            animator.SetBool("isRunning", false);
+            animator.SetBool("isWallGrabbing", false);
+            animator.SetFloat("yVelocity", 0f);
+            return;
+        }
+
+        animator.SetBool("isGrounded", isGrounded);
+        animator.SetFloat("yVelocity", rb.linearVelocity.y);
+        animator.SetBool("isRunning", isGrounded && !isWallGrabbingActive && !isWallJumping && !isClimbingLedge && (Mathf.Abs(moveInput.x) > 0.01f || Mathf.Abs(rb.linearVelocity.x) > 0.1f));
+
+        if (isGrounded && !isWallGrabbingActive && !isWallJumping && !isClimbingLedge && Mathf.Abs(moveInput.x) <= 0.01f && Mathf.Abs(rb.linearVelocity.x) < 0.05f)
+        {
+            idleTimer += Time.deltaTime;
+            if (!idleLong1Played && idleTimer >= idleLong1Delay) { animator.SetTrigger("IdleLong1"); idleLong1Played = true; }
+            if (!idleLong2Played && idleTimer >= idleLong2Delay) { animator.SetTrigger("IdleLong2"); idleLong2Played = true; }
+        }
+        else { idleTimer = 0f; idleLong1Played = idleLong2Played = false; }
+
+        if (idleLong2Played && animator.GetCurrentAnimatorStateInfo(0).IsName("Idle")) { idleTimer = 0f; idleLong1Played = idleLong2Played = false; }
+
+        animator.SetBool("isWallGrabbing", isWallGrabbingActive);
+        animator.SetFloat("wallClimbSpeed", Mathf.Abs(moveInput.y));
+        if (isWallGrabbingActive) { animator.SetFloat("yVelocity", 0f); animator.SetBool("isRunning", false); }
     }
-    private void FlipImmediate()
+
+    void UpdateStaminaUI()
     {
-        isFacingRight = !isFacingRight;
-        Vector3 scale = transform.localScale;
-        scale.x *= -1;
-        transform.localScale = scale;
+        if (staminaTextDisplay == null) return;
+        staminaTextDisplay.text = Mathf.FloorToInt(currentStamina).ToString();
+        bool show = canGrabWall && (isWallDetected || isWallGrabbingActive) && (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift)) && !isDead;
+        staminaTextDisplay.gameObject.SetActive(show);
+        if (show)
+        {
+            Vector3 scale = staminaTextDisplay.transform.parent.localScale;
+            scale.x = Mathf.Abs(scale.x) * (transform.localScale.x > 0 ? 1 : -1);
+            staminaTextDisplay.transform.parent.localScale = scale;
+            staminaTextDisplay.transform.parent.localPosition = staminaLabelOffset;
+        }
     }
+
+    public void Die(Vector3 respawnPosition)
+    {
+        if (isDead || isRespawning) return;
+        isDead = true;
+        isRespawning = true;
+        respawnPoint = respawnPosition;
+        BlockControl();
+        animator.SetLayerWeight(deathLayerIndex, 1f);
+        animator.Play("Death", deathLayerIndex, 0f);
+        StartCoroutine(DeathSequence());
+    }
+
+    private IEnumerator DeathSequence()
+    {
+        yield return new WaitForSecondsRealtime(deathAnimationDuration);
+        yield return StartCoroutine(FadeRespawnTo(respawnPoint));
+        RespawnManager.ResetWorld();
+        isDead = isRespawning = false;
+        UnblockControl();
+    }
+
+    public IEnumerator FadeRespawnTo(Vector3 newPosition)
+    {
+        if (playerInput != null) playerInput.enabled = false;
+        if (blackScreen != null) { blackScreen.SetActive(true); fadeAnimator.Play("BlackScreenIn", -1, 0f); }
+        yield return new WaitForSecondsRealtime(1.0f);
+        transform.position = newPosition;
+        animator.SetLayerWeight(deathLayerIndex, 0f);
+        animator.Rebind();
+        animator.Play("Idle", 0, 0f);
+        rb.bodyType = RigidbodyType2D.Dynamic;
+        rb.linearVelocity = Vector2.zero;
+        yield return new WaitForSecondsRealtime(0.5f);
+        if (blackScreen != null) blackScreen.SetActive(false);
+        if (blackScreen2 != null) { blackScreen2.SetActive(true); fadeAnimator2.Play("BlackScreenOut", -1, 0f); }
+        yield return new WaitForSecondsRealtime(1.0f);
+        if (blackScreen2 != null) blackScreen2.SetActive(false);
+        UnblockControl();
+    }
+
+    public void BlockControl()
+    {
+        isControlBlocked = true;
+        if (playerInput != null) playerInput.enabled = false;
+        rb.linearVelocity = Vector2.zero;
+        rb.constraints = RigidbodyConstraints2D.FreezeRotation | RigidbodyConstraints2D.FreezePositionX;
+        animator.SetBool("isRunning", false);
+    }
+
+    public void UnblockControl()
+    {
+        isControlBlocked = false;
+        if (playerInput != null) playerInput.enabled = true;
+        rb.constraints = RigidbodyConstraints2D.FreezeRotation;
+        moveInput = Vector2.zero;
+        horizontalMovement = 0f;
+    }
+
+    private void ForceIdleAnimation()
+    {
+        if (idleForced) return;
+        idleForced = true;
+        animator.SetBool("isRunning", false);
+        animator.SetBool("isDashing", false);
+        animator.SetBool("isWallGrabbing", false);
+        animator.SetBool("isGrounded", true);
+        animator.SetFloat("yVelocity", 0f);
+        animator.CrossFade("Idle", 0.1f);
+        idleTimer = 0f;
+        idleLong1Played = idleLong2Played = false;
+    }
+
+    public void EnterDialogue()
+    {
+        isInDialogue = true;
+        BlockControl();
+        isDashing = isWallGrabbingActive = isGrabbingWall = isWallJumping = isClimbingLedge = false;
+        rb.linearVelocity = new Vector2(0f, rb.linearVelocity.y);
+        rb.gravityScale = defaultGravity;
+        rb.constraints = RigidbodyConstraints2D.FreezeRotation;
+        if (isGrounded) ForceIdleAnimation();
+    }
+
+    public void ExitDialogue()
+    {
+        isInDialogue = false;
+        idleForced = false;
+        UnblockControl();
+    }
+
     private void OnDrawGizmosSelected()
     {
         Gizmos.color = Color.white;
@@ -973,4 +650,5 @@ public class PlayerMovement : MonoBehaviour
         Gizmos.color = Color.cyan;
         Gizmos.DrawWireCube(wallCheckPos.position, wallCheckSize);
     }
+    #endregion
 }

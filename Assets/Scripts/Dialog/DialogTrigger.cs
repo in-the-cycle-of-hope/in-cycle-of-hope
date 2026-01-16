@@ -8,7 +8,7 @@ public class DialogTrigger : MonoBehaviour
     public string blockName;
 
     [Header("Settings")]
-    public bool isOneTimeOnly = true; // Додаємо цей перемикач
+    public bool isOneTimeOnly = true;
 
     [Header("Save (Only for One Time dialogues)")]
     public string uniqueId;
@@ -22,7 +22,6 @@ public class DialogTrigger : MonoBehaviour
 
     private void Start()
     {
-        // Якщо діалог одноразовий — перевіряємо, чи він вже був
         if (isOneTimeOnly)
         {
             hasTriggered = PlayerPrefs.GetInt(PrefKey, 0) == 1;
@@ -37,7 +36,6 @@ public class DialogTrigger : MonoBehaviour
 
         if (flowchart == null || string.IsNullOrEmpty(blockName)) return;
 
-        // 🔽 НОВЕ: повідомляємо гравця, що почався діалог
         PlayerMovement player = collision.GetComponent<PlayerMovement>();
         if (player != null)
         {

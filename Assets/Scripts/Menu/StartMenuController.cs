@@ -19,8 +19,8 @@ public class StartMenuController : MonoBehaviour
     private GameObject lastSelected;
 
     [Header("Fading Systems")]
-    public Animator fadeAnimator1; // Ефект затухання (в чорний)
-    public Animator fadeAnimator2; // Ефект появи (з чорного)
+    public Animator fadeAnimator1;
+    public Animator fadeAnimator2;
     public GameObject blackScreen1;
     public GameObject blackScreen2;
 
@@ -31,7 +31,6 @@ public class StartMenuController : MonoBehaviour
 
         Time.timeScale = 1f;
 
-        // Ефект появи
         StartCoroutine(FadeInRoutine());
 
         continueButton.interactable = SaveSystem.CanContinue();
@@ -54,7 +53,6 @@ public class StartMenuController : MonoBehaviour
         blackScreen1.SetActive(true);
         fadeAnimator1.SetTrigger("BlackScreen");
 
-        // Використовуємо Realtime, щоб не залежати від Time.timeScale
         yield return new WaitForSecondsRealtime(1f);
 
         SceneManager.LoadScene(sceneName);

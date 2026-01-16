@@ -248,17 +248,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   menuMusic: {fileID: 8300000, guid: a54e32e49c4edf1449f546d7dc4623f8, type: 3}
-  SubtitlesMusic: {fileID: 8300000, guid: cb8d4a75c92024648b7202b894609382, type: 3}
+  subtitlesMusic: {fileID: 8300000, guid: cb8d4a75c92024648b7202b894609382, type: 3}
   musicSource: {fileID: 64107449}
   sfxSource: {fileID: 64107447}
   menuMove: {fileID: 8300000, guid: e55edb6146e78804c8f11b190e97e2eb, type: 3}
   menuConfirm: {fileID: 8300000, guid: 617f97d73b5124e4fb2ae44c06a0afbb, type: 3}
-  move: {fileID: 0}
-  jump: {fileID: 0}
-  dash: {fileID: 0}
-  climb: {fileID: 0}
-  death: {fileID: 0}
-  crack: {fileID: 0}
+  crack: {fileID: 8300000, guid: 3a59df1fd41642b498f4ffbe4682c603, type: 3}
+  dragging: {fileID: 8300000, guid: 559d5d86a10484d40a41f2438a4df173, type: 3}
 --- !u!82 &64107449
 AudioSource:
   m_ObjectHideFlags: 0
@@ -492,7 +488,8 @@ MonoBehaviour:
     y: -340
     width: 1114
     height: 859
-  selectedBlocks: []
+  selectedBlocks:
+  - {fileID: 301732506}
   selectedCommands: []
   variables: []
   description: 
@@ -737,14 +734,33 @@ MonoBehaviour:
   titlesText: {fileID: 1196820866}
   startButton: {fileID: 1803220157}
   startButtonGroup: {fileID: 1803220160}
-  fullText: "\u0436\u043E\u0441\u043A\u0456 \u0442\u0438\u0442\u0440\u0438 \u043F\u0430\u0440\u0430\u043C\u043F\u0430\u043C\u043F\u0430\u043C
-    \u043D\u044F\u043D\u044F\u043D\u044F\u043D\u044F\u043D\u043D\u044F"
+  fullText: "\u0426\u0438\u043A\u043B \u043D\u0430\u0434\u0456\u0457\n\u0412\u0438\u043F\u0443\u0441\u043A\u043D\u0430
+    \u043A\u0432\u0430\u043B\u0456\u0444\u0456\u043A\u0430\u0446\u0456\u0439\u043D\u0430
+    \u0440\u043E\u0431\u043E\u0442\u0430\n\n\u0420\u043E\u0437\u0440\u043E\u0431\u043A\u0430
+    \u0433\u0440\u0438: \u0413\u043E\u0432\u043E\u0440\u043E\u0432\u0430 \u041E\u043B\u0435\u043A\u0441\u0430\u043D\u0434\u0440\u0430
+    \u0442\u0430 \u041D\u0430\u0443\u043C\u0435\u043D\u043A\u043E \u041A\u0441\u0435\u043D\u0456\u044F\n\u041D\u0430\u0432\u0447\u0430\u043B\u044C\u043D\u0438\u0439
+    \u0437\u0430\u043A\u043B\u0430\u0434: \u0414\u043D\u0456\u043F\u0440\u043E\u0432\u0441\u044C\u043A\u0438\u0439
+    \u043D\u0430\u0443\u043A\u043E\u0432\u0438\u0439 \u043B\u0456\u0446\u0435\u0439
+    \u0456\u043D\u0444\u043E\u0440\u043C\u0430\u0446\u0456\u0439\u043D\u0438\u0445
+    \u0442\u0435\u0445\u043D\u043E\u043B\u043E\u0433\u0456\u0439\n\u041A\u0435\u0440\u0456\u0432\u043D\u0438\u043A
+    \u0440\u043E\u0431\u043E\u0442\u0438: \u041B\u0430\u0432\u0440\u0435\u043D\u044E\u043A
+    \u0406\u0440\u0438\u043D\u0430 \u0412\u0430\u043B\u0435\u0440\u0456\u0457\u0432\u043D\u0430\n2026\n\n\u0414\u044F\u043A\u0443\u0454\u043C\u043E
+    \u0437\u0430 \u0443\u0432\u0430\u0433\u0443 \u0442\u0430 \u043F\u0440\u043E\u0445\u043E\u0434\u0436\u0435\u043D\u043D\u044F
+    \u0433\u0440\u0438!"
   typingSpeed: 0.05
   buttonAppearDelay: 2
   buttonFadeDuration: 0.8
-  typingSound: {fileID: 8300000, guid: c18ae2c530c264a6880266d5e0a71337, type: 3}
-  fadeOutAnimator: {fileID: 2026314820}
+  introSounds:
+  - {fileID: 8300000, guid: ae761a0ee612e644eae6e6024bef46f3, type: 3}
+  - {fileID: 8300000, guid: 9d01de12d874c2840b61bf289f88d4be, type: 3}
+  - {fileID: 8300000, guid: 14738f25d86d4d640a2204610cc766c7, type: 3}
+  pauseBetweenIntroSounds: 1.2
+  typingSound: {fileID: 0}
+  fadeAnimatorIn: {fileID: 0}
+  fadeAnimatorOut: {fileID: 0}
+  blackScreenIn: {fileID: 0}
   blackScreenOut: {fileID: 2026314818}
+  startGameScene: StartScene
 --- !u!1 &869187001
 GameObject:
   m_ObjectHideFlags: 0
@@ -1010,8 +1026,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 40.375}
-  m_SizeDelta: {x: 278.2, y: 50}
+  m_AnchoredPosition: {x: 0, y: 30.25}
+  m_SizeDelta: {x: 500, y: 200}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1196820866
 MonoBehaviour:
@@ -1035,8 +1051,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: 
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 6b955996cc776524bac90f5b20d45b47, type: 2}
-  m_sharedMaterial: {fileID: 4524755490963126663, guid: 6b955996cc776524bac90f5b20d45b47, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 126724d6bb996ff49a0d92d9b10f8e2f, type: 2}
+  m_sharedMaterial: {fileID: 7629720529434388973, guid: 126724d6bb996ff49a0d92d9b10f8e2f, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -1060,8 +1076,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 32
-  m_fontSizeBase: 32
+  m_fontSize: 16
+  m_fontSizeBase: 16
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
@@ -1171,8 +1187,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: "\u041D\u041E\u0412\u0410 \u0413\u0420\u0410"
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 6b955996cc776524bac90f5b20d45b47, type: 2}
-  m_sharedMaterial: {fileID: 4524755490963126663, guid: 6b955996cc776524bac90f5b20d45b47, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 126724d6bb996ff49a0d92d9b10f8e2f, type: 2}
+  m_sharedMaterial: {fileID: 7629720529434388973, guid: 126724d6bb996ff49a0d92d9b10f8e2f, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -1375,7 +1391,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: -74}
+  m_AnchoredPosition: {x: 0, y: -90}
   m_SizeDelta: {x: 200, y: 40}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1803220157

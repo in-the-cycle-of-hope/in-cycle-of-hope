@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -5,8 +6,12 @@ public class DialogAvatar : MonoBehaviour
 {
     public Image avatarImage;
 
-    public Sprite heroHappy;
-    public Sprite heroAngry;
+    public Sprite heroNeutral;
+    public Sprite heroUnsure;
+    public Sprite heroShocked;
+    public Sprite heroContent;
+    public Sprite heroSuspisious;
+    public Sprite heroAEnd;
 
     private void Awake()
     {
@@ -20,16 +25,28 @@ public class DialogAvatar : MonoBehaviour
         avatarImage.color = c;
     }
 
-    public void ShowHeroHappy()
+    public void ShowHeroNeutral()
     {
-        avatarImage.sprite = heroHappy;
+        avatarImage.sprite = heroNeutral;
+        avatarImage.enabled = true;
+        SetAlpha(1f);
+    }
+    public void ShowHeroUnsure()
+    {
+        avatarImage.sprite = heroUnsure;
+        avatarImage.enabled = true;
+        SetAlpha(1f);
+    }
+    internal void ShowHeroShocked()
+    {
+        avatarImage.sprite = heroShocked;
         avatarImage.enabled = true;
         SetAlpha(1f);
     }
 
-    public void ShowHeroAngry()
+    internal void ShowHeroEnd()
     {
-        avatarImage.sprite = heroAngry;
+        avatarImage.sprite = heroAEnd;
         avatarImage.enabled = true;
         SetAlpha(1f);
     }

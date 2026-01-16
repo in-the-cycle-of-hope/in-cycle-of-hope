@@ -16,7 +16,7 @@ public class MovingPlatform : MonoBehaviour
     private void Awake()
     {
         startPosition = pointA.position;
-        RespawnManager.RegisterPlatform(this); // 👈 реєстрація
+        RespawnManager.RegisterPlatform(this);
     }
 
     private void OnDestroy()
