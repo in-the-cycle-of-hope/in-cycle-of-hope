@@ -130,8 +130,6 @@ public class PlayerMovement : MonoBehaviour
     public TextMeshProUGUI staminaTextDisplay;
 
     private bool isFacingRight = true;
-    private RaycastHit2D[] lowerRayHitBuffer = new RaycastHit2D[1];
-    private RaycastHit2D[] upperRayHitBuffer = new RaycastHit2D[1];
     private WaitForSeconds _dashCooldownWait;
     private WaitForSeconds _wallJumpDurationWait;
     #endregion
@@ -166,6 +164,10 @@ public class PlayerMovement : MonoBehaviour
 
     private void Update()
     {
+        if (!isClimbingLedge && !isWallGrabbingActive && rb.gravityScale == 0)
+        {
+            rb.gravityScale = defaultGravity;
+        }
         if (isControlBlocked)
         {
             moveInput = Vector2.zero;
@@ -225,42 +227,46 @@ public class PlayerMovement : MonoBehaviour
 
     private void FixedUpdate()
     {
+        if (isClimbingLedge) return;
         if (isControlBlocked)
         {
             rb.linearVelocity = new Vector2(0f, rb.linearVelocity.y);
             return;
         }
         if (isDashing || isWallJumping) return;
-
-        if (isWallGrabbingActive && !isClimbingLedge) TryLedgeClimb();
-
         if (isWallGrabbingActive)
         {
+            TryLedgeClimb();
+            if (isClimbingLedge) return;
+            rb.constraints = RigidbodyConstraints2D.FreezeRotation;
+
             if (Mathf.Abs(moveInput.y) > 0.01f)
             {
-                rb.constraints = RigidbodyConstraints2D.FreezeRotation;
                 rb.linearVelocity = new Vector2(0f, moveInput.y * wallClimbSpeed);
+
                 if (moveInput.y > 0.01f) currentStamina -= climbStaminaDrain * Time.fixedDeltaTime;
                 else if (moveInput.y < -0.01f) currentStamina -= descendStaminaDrain * Time.fixedDeltaTime;
             }
             else
             {
-                rb.constraints = RigidbodyConstraints2D.FreezeRotation | RigidbodyConstraints2D.FreezePositionY;
                 rb.linearVelocity = Vector2.zero;
                 currentStamina -= idleStaminaDrain * Time.fixedDeltaTime;
             }
 
             currentStamina = Mathf.Clamp(currentStamina, 0f, maxStamina);
+
             if (isOutOfStamina)
             {
                 isGrabbingWall = false;
                 isWallGrabbingActive = false;
                 rb.gravityScale = defaultGravity;
-                rb.constraints = RigidbodyConstraints2D.FreezeRotation;
                 wallJumpGraceTimer = wallJumpGracePeriod;
             }
             return;
         }
+
+        if (rb.gravityScale == 0) rb.gravityScale = defaultGravity;
+
         rb.linearVelocity = new Vector2(horizontalMovement * moveSpeed, rb.linearVelocity.y);
         StepUp();
     }
@@ -293,14 +299,12 @@ public class PlayerMovement : MonoBehaviour
     void StepUp()
     {
         Vector2 dir = Vector2.right * transform.localScale.x;
-        if (Physics2D.RaycastNonAlloc(stepRayLower.position, dir, lowerRayHitBuffer, 0.1f, Ground) > 0)
+        if (Physics2D.Raycast(stepRayLower.position, dir, 0.2f, Ground))
         {
-            if (Physics2D.RaycastNonAlloc(stepRayUpper.position, dir, upperRayHitBuffer, 0.2f, Ground) == 0)
+            if (!Physics2D.Raycast(stepRayUpper.position, dir, 0.2f, Ground))
             {
-                if (lowerRayHitBuffer[0].point.y - rb.position.y <= stepHeight + 0.01f && Mathf.Abs(moveInput.x) > 0.01f)
-                {
-                    rb.position += Vector2.up * stepSmooth;
-                }
+                rb.MovePosition(rb.position + Vector2.up * stepSmooth);
+                rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0);
             }
         }
     }
@@ -325,7 +329,7 @@ public class PlayerMovement : MonoBehaviour
 
     public void Jump(InputAction.CallbackContext context)
     {
-        if (!canJump || !context.started || isDashing) return;
+        if (!canJump || !context.started || isDashing || isClimbingLedge) return;
         jumpBufferTimer = jumpBufferTime;
         if ((isWallDetected && isGrabbingWall && !isGrounded) || (wallJumpGraceTimer > 0 && isWallDetected))
         {
@@ -433,22 +437,32 @@ public class PlayerMovement : MonoBehaviour
 
     private void TryLedgeClimb()
     {
-        Vector2 dir = isFacingRight ? Vector2.right : Vector2.left;
-        if (!Physics2D.OverlapBox(wallCheckPos.position, wallCheckSize, 0f, wallLayer)) return;
-        if (Physics2D.OverlapBox((Vector2)wallCheckPos.position + Vector2.up * ledgeCheckUp, new Vector2(0.4f, 0.6f), 0f, wallLayer)) return;
-        RaycastHit2D hitDown = Physics2D.Raycast((Vector2)wallCheckPos.position + dir * ledgeCheckForward + Vector2.up * ledgeCheckUp, Vector2.down, ledgeCheckDownDist, groundLayer);
-        if (!hitDown) return;
+        if (rb.linearVelocity.y > 2f) return;
 
-        Vector3 target = new Vector3(hitDown.point.x - (isFacingRight ? ledgePullBack : -ledgePullBack), hitDown.point.y + ledgeClimbYOffset, transform.position.z);
-        StartCoroutine(LedgeClimbRoutine(target));
+        Vector2 dir = isFacingRight ? Vector2.right : Vector2.left;
+
+        if (!Physics2D.OverlapBox(wallCheckPos.position, wallCheckSize, 0f, wallLayer)) return;
+        if (Physics2D.OverlapBox((Vector2)wallCheckPos.position + Vector2.up * ledgeCheckUp, new Vector2(0.4f, 0.4f), 0f, wallLayer)) return;
+        RaycastHit2D hitDown = Physics2D.Raycast((Vector2)wallCheckPos.position + dir * ledgeCheckForward + Vector2.up * ledgeCheckUp, Vector2.down, ledgeCheckDownDist, groundLayer);
+
+        if (hitDown)
+        {
+            Vector3 target = new Vector3(hitDown.point.x - (isFacingRight ? ledgePullBack : -ledgePullBack), hitDown.point.y + ledgeClimbYOffset, transform.position.z);
+            StartCoroutine(LedgeClimbRoutine(target));
+        }
     }
 
     private IEnumerator LedgeClimbRoutine(Vector3 targetPos)
     {
+        if (isClimbingLedge) yield break;
         isClimbingLedge = true;
-        isWallGrabbingActive = isGrabbingWall = false;
+        int originalLayer = gameObject.layer;
+
+        gameObject.layer = LayerMask.NameToLayer("Ignore Raycast");
+
         rb.gravityScale = 0f;
         rb.linearVelocity = Vector2.zero;
+
         Vector3 start = transform.position;
         float t = 0f;
         while (t < 1f)
@@ -457,9 +471,10 @@ public class PlayerMovement : MonoBehaviour
             transform.position = Vector3.Lerp(start, targetPos, Mathf.SmoothStep(0f, 1f, t));
             yield return null;
         }
+
         transform.position = targetPos;
+        gameObject.layer = originalLayer;
         rb.gravityScale = defaultGravity;
-        yield return new WaitForSeconds(0.05f);
         isClimbingLedge = false;
     }
     #endregion

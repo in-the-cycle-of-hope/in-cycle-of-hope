@@ -29,9 +29,6 @@ public class PlayerIntro : MonoBehaviour
         mov.isIntroPlaying = true;
         mov.isControlBlocked = true;
 
-        if (AudioManager.Instance != null)
-            AudioManager.Instance.PlaySFX(AudioManager.Instance.dragging);
-
         animator.Play("StartAnim", 0, 0f);
         yield return null;
 

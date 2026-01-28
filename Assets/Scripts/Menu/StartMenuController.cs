@@ -19,10 +19,10 @@ public class StartMenuController : MonoBehaviour
     private GameObject lastSelected;
 
     [Header("Fading Systems")]
-    public Animator fadeAnimator1;
-    public Animator fadeAnimator2;
-    public GameObject blackScreen1;
-    public GameObject blackScreen2;
+    public Animator fadeAnimatorStart;
+    public Animator fadeAnimatorExit;
+    public GameObject blackScreenStart;
+    public GameObject blackScreenExit;
 
     void Start()
     {
@@ -31,7 +31,11 @@ public class StartMenuController : MonoBehaviour
 
         Time.timeScale = 1f;
 
-        StartCoroutine(FadeInRoutine());
+        if (blackScreenStart != null)
+        {
+            blackScreenStart.SetActive(true);
+            StartCoroutine(FadeInRoutine());
+        }
 
         continueButton.interactable = SaveSystem.CanContinue();
 
@@ -50,8 +54,8 @@ public class StartMenuController : MonoBehaviour
 
     private IEnumerator SwitchSceneWithFade(string sceneName)
     {
-        blackScreen1.SetActive(true);
-        fadeAnimator1.SetTrigger("BlackScreen");
+        blackScreenExit.SetActive(true);
+        fadeAnimatorExit.SetTrigger("BlackScreen");
 
         yield return new WaitForSecondsRealtime(1f);
 
@@ -60,13 +64,15 @@ public class StartMenuController : MonoBehaviour
 
     private IEnumerator FadeInRoutine()
     {
-        if (blackScreen2 != null)
+        yield return new WaitForEndOfFrame();
+
+        if (fadeAnimatorStart != null)
         {
-            blackScreen2.SetActive(true);
-            fadeAnimator2.SetTrigger("BlackScreen");
-            yield return new WaitForSecondsRealtime(1f);
-            blackScreen2.SetActive(false);
+            fadeAnimatorStart.Play("BlackScreenOut", -1, 0f);
         }
+
+        yield return new WaitForSecondsRealtime(1.0f);
+        blackScreenStart.SetActive(false);
     }
 
     public void OpenSettings()

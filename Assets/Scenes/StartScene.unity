@@ -283,17 +283,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c4b449cf703653445aa91d527cad3931, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  menuMusic: {fileID: 8300000, guid: a54e32e49c4edf1449f546d7dc4623f8, type: 3}
-  subtitlesMusic: {fileID: 0}
+  mainMixer: {fileID: 24100000, guid: 90d9b5a518e56a946932408fd2995813, type: 2}
+  fungusMixer: {fileID: 24100000, guid: 5f171e3c1cd39ff488490da837375068, type: 2}
   musicSource: {fileID: 64107449}
   sfxSource: {fileID: 64107447}
+  menuMusic: {fileID: 8300000, guid: a54e32e49c4edf1449f546d7dc4623f8, type: 3}
+  subtitlesMusic: {fileID: 0}
   menuMove: {fileID: 8300000, guid: e55edb6146e78804c8f11b190e97e2eb, type: 3}
   menuConfirm: {fileID: 8300000, guid: 617f97d73b5124e4fb2ae44c06a0afbb, type: 3}
   crack: {fileID: 0}
-  dragging: {fileID: 0}
-  sigh: {fileID: 0}
-  birds: {fileID: 0}
-  rustling: {fileID: 0}
 --- !u!82 &64107449
 AudioSource:
   m_ObjectHideFlags: 0
@@ -1362,24 +1360,12 @@ MonoBehaviour:
   m_HandleRect: {fileID: 994291715}
   m_Direction: 0
   m_MinValue: 0.0001
-  m_MaxValue: 1
+  m_MaxValue: 0.1
   m_WholeNumbers: 0
-  m_Value: 1
+  m_Value: 0.01
   m_OnValueChanged:
     m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 1606697404}
-        m_TargetAssemblyTypeName: SettingsMenu, Assembly-CSharp
-        m_MethodName: SetSFXVolume
-        m_Mode: 0
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
+      m_Calls: []
 --- !u!1 &859465364
 GameObject:
   m_ObjectHideFlags: 0
@@ -1429,12 +1415,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0cd44c1031e13a943bb63640046fad76, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_UiScaleMode: 0
-  m_ReferencePixelsPerUnit: 100
+  m_UiScaleMode: 1
+  m_ReferencePixelsPerUnit: 8
   m_ScaleFactor: 1
-  m_ReferenceResolution: {x: 800, y: 600}
+  m_ReferenceResolution: {x: 640, y: 360}
   m_ScreenMatchMode: 0
-  m_MatchWidthOrHeight: 0
+  m_MatchWidthOrHeight: 0.5
   m_PhysicalUnit: 3
   m_FallbackScreenDPI: 96
   m_DefaultSpriteDPI: 96
@@ -1503,10 +1489,10 @@ MonoBehaviour:
   firstSelectedButton: {fileID: 1803220155}
   firstSettingsButton: {fileID: 1740912339}
   continueButton: {fileID: 1392086923}
-  fadeAnimator1: {fileID: 775572099}
-  fadeAnimator2: {fileID: 2026314820}
-  blackScreen1: {fileID: 775572097}
-  blackScreen2: {fileID: 2026314818}
+  fadeAnimatorStart: {fileID: 2026314820}
+  fadeAnimatorExit: {fileID: 775572099}
+  blackScreenStart: {fileID: 2026314818}
+  blackScreenExit: {fileID: 775572097}
 --- !u!1 &869187001
 GameObject:
   m_ObjectHideFlags: 0
@@ -3177,8 +3163,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b56c14949eecdac459247c9da06c8571, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  mainMixer: {fileID: 24100000, guid: 90d9b5a518e56a946932408fd2995813, type: 2}
-  fungusMixer: {fileID: 0}
   musicSlider: {fileID: 1740912341}
   sfxSlider: {fileID: 831822263}
 --- !u!224 &1606697405
@@ -3599,24 +3583,12 @@ MonoBehaviour:
   m_HandleRect: {fileID: 440336043}
   m_Direction: 0
   m_MinValue: 0.0001
-  m_MaxValue: 1
+  m_MaxValue: 0.2
   m_WholeNumbers: 0
-  m_Value: 1
+  m_Value: 0.02
   m_OnValueChanged:
     m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 1606697404}
-        m_TargetAssemblyTypeName: SettingsMenu, Assembly-CSharp
-        m_MethodName: SetMusicVolume
-        m_Mode: 0
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
+      m_Calls: []
 --- !u!1 &1803220155
 GameObject:
   m_ObjectHideFlags: 0

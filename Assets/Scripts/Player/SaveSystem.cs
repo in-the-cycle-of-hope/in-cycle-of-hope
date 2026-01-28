@@ -14,15 +14,8 @@ public static class SaveSystem
         PlayerPrefs.Save();
     }
 
-    public static int GetCheckpointIndex()
-    {
-        return PlayerPrefs.GetInt("CheckpointIndex", -1);
-    }
-
-    public static bool CanContinue()
-    {
-        return PlayerPrefs.HasKey("SceneName");
-    }
+    public static int GetCheckpointIndex() => PlayerPrefs.GetInt("CheckpointIndex", -1);
+    public static bool CanContinue() => PlayerPrefs.HasKey("SceneName");
     public static void SaveAbilities(bool jump, bool dash, bool wall)
     {
         PlayerPrefs.SetInt("CanJump", jump ? 1 : 0);
@@ -57,14 +50,17 @@ public static class SaveSystem
         );
     }
 
-    public static string LoadScene()
-    {
-        return PlayerPrefs.GetString("SceneName");
-    }
-
+    public static string LoadScene() => PlayerPrefs.GetString("SceneName");
     public static void ClearSave()
     {
+        float musicVol = PlayerPrefs.GetFloat("MusicVolume", 0.2f);
+        float sfxVol = PlayerPrefs.GetFloat("SFXVolume", 0.2f);
+
         PlayerPrefs.DeleteAll();
+
+        PlayerPrefs.SetFloat("MusicVolume", musicVol);
+        PlayerPrefs.SetFloat("SFXVolume", sfxVol);
+
         PlayerPrefs.Save();
     }
 }

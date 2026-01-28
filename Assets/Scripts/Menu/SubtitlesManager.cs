@@ -5,7 +5,7 @@ using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
-public class DelayedButton : MonoBehaviour
+public class SubtitlesManager : MonoBehaviour
 {
     [Header("UI Elements")]
     [SerializeField] private TextMeshProUGUI titlesText;
@@ -46,7 +46,7 @@ public class DelayedButton : MonoBehaviour
         startButton.onClick.AddListener(OnStartClicked);
 
         StartCoroutine(FadeInRoutine());
-        StartCoroutine(SequenceWithSoundsRoutine());
+        StartCoroutine(WaitForAudioAndStart());
     }
 
     private IEnumerator SequenceWithSoundsRoutine()
@@ -71,6 +71,13 @@ public class DelayedButton : MonoBehaviour
 
             yield return new WaitForSecondsRealtime(pauseBetweenIntroSounds);
         }
+    }
+    private IEnumerator WaitForAudioAndStart()
+    {
+        while (AudioManager.Instance == null)
+            yield return null;
+
+        StartCoroutine(SequenceWithSoundsRoutine());
     }
 
     private IEnumerator FadeInRoutine()
@@ -137,11 +144,16 @@ public class DelayedButton : MonoBehaviour
         if (AudioManager.Instance != null)
         {
             AudioManager.Instance.PlaySFX(AudioManager.Instance.menuConfirm);
-            AudioManager.Instance.StopAllSounds();
+            StartCoroutine(StopSoundsDelayed());
         }
 
         SaveSystem.ClearSave();
         StartCoroutine(FadeOutAndLoad());
+    }
+    private IEnumerator StopSoundsDelayed()
+    {
+        yield return new WaitForSecondsRealtime(0.1f);
+        AudioManager.Instance.StopAllSounds();
     }
 
     private IEnumerator FadeOutAndLoad()

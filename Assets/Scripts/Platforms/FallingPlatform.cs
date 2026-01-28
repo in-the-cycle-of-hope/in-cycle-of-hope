@@ -49,9 +49,9 @@ public class FallingPlatform : MonoBehaviour
 
     private IEnumerator FallRoutine()
     {
-        yield return new WaitForSeconds(delayBeforeFall);
+        yield return new WaitForSecondsRealtime(delayBeforeFall);
 
-        if (AudioManager.Instance)
+        if (AudioManager.Instance != null)
             AudioManager.Instance.PlaySFX(AudioManager.Instance.crack);
 
         yield return StartCoroutine(Shake());

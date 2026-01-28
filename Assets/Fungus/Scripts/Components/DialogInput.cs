@@ -99,8 +99,7 @@ namespace Fungus
             
             if (writer != null && writer.IsWriting)
             {
-                if (inputSystemUIInputModule.submit.action.triggered ||
-                    (cancelEnabled && inputSystemUIInputModule.cancel.action.triggered))
+                if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
                 {
                     SetNextLineFlag();
                 }

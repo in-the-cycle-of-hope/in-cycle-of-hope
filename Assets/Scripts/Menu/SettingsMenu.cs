@@ -1,47 +1,45 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.Audio;
 using UnityEngine.UI;
 
 public class SettingsMenu : MonoBehaviour
 {
-    [Header("Mixers")]
-    [SerializeField] private AudioMixer mainMixer;
-    [SerializeField] private AudioMixer fungusMixer;
-
-    [Header("Sliders")]
     [SerializeField] private Slider musicSlider;
     [SerializeField] private Slider sfxSlider;
 
-    void Start()
+    private void OnEnable()
     {
+        StartCoroutine(SyncSlidersRoutine());
+    }
+    private IEnumerator SyncSlidersRoutine()
+    {
+        yield return new WaitForEndOfFrame();
+
         float mVol = PlayerPrefs.GetFloat("MusicVolume", 0.75f);
         float sVol = PlayerPrefs.GetFloat("SFXVolume", 0.75f);
+
+        musicSlider.onValueChanged.RemoveAllListeners();
+        sfxSlider.onValueChanged.RemoveAllListeners();
 
         musicSlider.value = mVol;
         sfxSlider.value = sVol;
 
-        SetMusicVolume(mVol);
-        SetSFXVolume(sVol);
+        musicSlider.onValueChanged.AddListener(SetMusicVolume);
+        sfxSlider.onValueChanged.AddListener(SetSFXVolume);
     }
-
     public void SetMusicVolume(float value)
     {
-        float dbValue = Mathf.Log10(Mathf.Max(value, 0.0001f)) * 20;
+        if (AudioManager.Instance != null)
+            AudioManager.Instance.SetMixerVolume("MusicVol", value);
 
-        mainMixer.SetFloat("MusicVol", dbValue);
         PlayerPrefs.SetFloat("MusicVolume", value);
     }
 
     public void SetSFXVolume(float value)
     {
-        float dbValue = Mathf.Log10(Mathf.Max(value, 0.0001f)) * 20;
-
-        mainMixer.SetFloat("SFXVol", dbValue);
-
-        if (fungusMixer != null)
-        {
-            fungusMixer.SetFloat("SFXVol", dbValue);
-        }
+        if (AudioManager.Instance != null)
+            AudioManager.Instance.SetMixerVolume("SFXVol", value);
 
         PlayerPrefs.SetFloat("SFXVolume", value);
     }

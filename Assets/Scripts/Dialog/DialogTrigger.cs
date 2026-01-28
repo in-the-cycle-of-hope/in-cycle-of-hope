@@ -7,6 +7,9 @@ public class DialogTrigger : MonoBehaviour
     public Flowchart flowchart;
     public string blockName;
 
+    [Header("Intro")]
+    public bool isIntroTrigger = false;
+
     [Header("Settings")]
     public bool isOneTimeOnly = true;
 

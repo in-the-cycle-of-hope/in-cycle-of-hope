@@ -33,7 +33,12 @@ public class PauseManager : MonoBehaviour
     void Start()
     {
         Time.timeScale = 1f;
-        if (blackScreenStart != null) StartCoroutine(FadeFromBlack());
+
+        if (blackScreenStart != null)
+        {
+            blackScreenStart.SetActive(true);
+            StartCoroutine(FadeInRoutine());
+        }
     }
 
     void Update()
@@ -93,6 +98,26 @@ public class PauseManager : MonoBehaviour
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
         EventSystem.current.SetSelectedGameObject(null);
+    }
+    private IEnumerator FadeOutRoutine(string sceneName)
+    {
+        blackScreenExit.SetActive(true);
+        fadeAnimatorExit.SetTrigger("BlackScreen");
+
+        yield return new WaitForSecondsRealtime(1f);
+
+        SceneManager.LoadScene(sceneName);
+    }
+    private IEnumerator FadeInRoutine()
+    {
+        yield return new WaitForEndOfFrame();
+        if (fadeAnimatorStart != null)
+        {
+            fadeAnimatorStart.Play("BlackScreenOut", -1, 0f);
+        }
+
+        yield return new WaitForSecondsRealtime(1.0f);
+        blackScreenStart.SetActive(false);
     }
 
     public void OpenSettings()
@@ -182,52 +207,18 @@ public class PauseManager : MonoBehaviour
     {
         PlayConfirm();
         Time.timeScale = 1f;
-        StartCoroutine(HomeRoutine());
-    }
-
-    private IEnumerator HomeRoutine()
-    {
-        blackScreenExit.SetActive(true);
-        fadeAnimatorExit.Play("FadeOut", -1, 0f);
-        yield return new WaitForSecondsRealtime(1f);
-        SceneManager.LoadScene("StartScene");
+        StartCoroutine(FadeOutRoutine("StartScene"));
     }
     public void Subtitles()
     {
         Time.timeScale = 1f; 
-        StartCoroutine(SubtitlesRoutine());
-    }
-
-    private IEnumerator SubtitlesRoutine()
-    {
-        blackScreenExit.SetActive(true);
-        fadeAnimatorExit.Play("FadeOut", -1, 0f);
-        yield return new WaitForSecondsRealtime(1.1f);
-        SceneManager.LoadScene("Subtitles");
+        StartCoroutine(FadeOutRoutine("Credits"));
     }
 
     private void PlayConfirmSound()
     {
         if (AudioManager.Instance != null)
             AudioManager.Instance.PlaySFX(AudioManager.Instance.menuConfirm);
-    }
-
-    private IEnumerator FadeFromBlack()
-    {
-        if (blackScreenStart != null)
-        {
-            blackScreenStart.SetActive(true);
-
-            CanvasGroup cg = blackScreenStart.GetComponent<CanvasGroup>();
-            if (cg != null) cg.alpha = 1f;
-
-            yield return new WaitForEndOfFrame();
-
-            fadeAnimatorStart.Play("BlackScreenOut", -1, 0f);
-
-            yield return new WaitForSecondsRealtime(1.0f);
-            blackScreenStart.SetActive(false);
-        }
     }
 
     private IEnumerator SelectObject(GameObject target)

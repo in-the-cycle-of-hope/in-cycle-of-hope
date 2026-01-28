@@ -1,8 +1,8 @@
 using UnityEngine;
 
-public class DialogueManager : MonoBehaviour
+public class DialogManager : MonoBehaviour
 {
-    public static DialogueManager Instance;
+    public static DialogManager Instance;
     private DialogAvatar _avatar;
 
     private DialogAvatar Avatar
